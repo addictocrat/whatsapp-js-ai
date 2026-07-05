@@ -5,14 +5,42 @@ function showSection(id) {
   if (id === 'instructions') loadInstructions();
   if (id === 'chats') loadChats();
   if (id === 'cron') loadCronTasks();
+  if (id === 'settings') loadSettings();
+}
+
+// --- Settings ---
+async function loadSettings() {
+  const res = await fetch('/api/settings');
+  const data = await res.json();
+  if (data) {
+    if (data.contextCount !== undefined) {
+      document.getElementById('context-count').value = data.contextCount;
+    }
+    if (data.isPaused !== undefined) {
+      document.getElementById('ai-paused').checked = data.isPaused;
+    }
+  }
+}
+
+async function saveSettings() {
+  const val = document.getElementById('context-count').value;
+  const paused = document.getElementById('ai-paused').checked;
+  await fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contextCount: val, isPaused: paused })
+  });
+  alert('Settings saved!');
 }
 
 // --- Instructions ---
 let editingInstId = null;
+let instructionsList = [];
 
 async function loadInstructions() {
   const res = await fetch('/api/instructions');
   const data = await res.json();
+  instructionsList = data;
   const tbody = document.querySelector('#instructions-table tbody');
   tbody.innerHTML = '';
   data.forEach(inst => {
@@ -22,7 +50,7 @@ async function loadInstructions() {
       <td>${inst.name}</td>
       <td><pre style="margin:0; max-height: 100px; overflow:auto; white-space: pre-wrap;">${inst.content}</pre></td>
       <td>
-        <button onclick="editInstruction(${inst.id}, '${inst.name.replace(/'/g, "\\'")}', '${inst.content.replace(/'/g, "\\'").replace(/\n/g, "\\n").replace(/\r/g, "\\r")}')">Edit</button>
+        <button onclick="editInstruction(${inst.id})">Edit</button>
         <button class="danger" onclick="deleteInstruction(${inst.id})">Delete</button>
       </td>
     `;
@@ -30,12 +58,14 @@ async function loadInstructions() {
   });
 }
 
-function editInstruction(id, name, content) {
+function editInstruction(id) {
+  const inst = instructionsList.find(i => i.id === id);
+  if (!inst) return;
   editingInstId = id;
   document.getElementById('inst-form-title').innerText = "Edit Instruction";
   document.getElementById('inst-id').value = id;
-  document.getElementById('inst-name').value = name;
-  document.getElementById('inst-content').value = content;
+  document.getElementById('inst-name').value = inst.name;
+  document.getElementById('inst-content').value = inst.content;
   document.getElementById('inst-submit-btn').innerText = "Update";
   document.getElementById('inst-cancel-btn').style.display = "inline-block";
 }

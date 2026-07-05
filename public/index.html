@@ -13,11 +13,30 @@
       <li><a href="#" onclick="showSection('instructions')">Instructions</a></li>
       <li><a href="#" onclick="showSection('chats')">Daily Chats</a></li>
       <li><a href="#" onclick="showSection('cron')">Cron Tasks</a></li>
+      <li><a href="#" onclick="showSection('settings')">Settings</a></li>
     </ul>
   </div>
 
   <div class="main-content">
     
+    <!-- Settings Section -->
+    <section id="settings">
+      <h2>General Settings</h2>
+      <div class="card">
+        <h3>Memory Settings</h3>
+        <p>Number of previous message pairs (User + AI) to send as context:</p>
+        <input type="number" id="context-count" min="0" value="8" style="width: 100px;">
+        
+        <h3>AI Response Control</h3>
+        <label style="display: flex; align-items: center; gap: 10px; margin-top: 10px; cursor: pointer; user-select: none;">
+          <input type="checkbox" id="ai-paused" style="width: auto; margin-bottom: 0;">
+          <span>Pause AI Responses</span>
+        </label>
+        
+        <button onclick="saveSettings()" style="margin-top: 20px;">Save Settings</button>
+      </div>
+    </section>
+
     <!-- Instructions Section -->
     <section id="instructions" class="active">
       <h2>System Instructions</h2>

@@ -179,6 +179,13 @@ client.on('message', async (msg) => {
   // Log incoming message to DB
   await logMessageToDb(resolvedPhone, msg.body, 'user');
 
+  // Check if AI responses are paused
+  const settings = await prisma.settings.findFirst();
+  if (settings && settings.isPaused) {
+    console.log("⏸️ AI responses are currently paused. Ignoring message.");
+    return;
+  }
+
   console.log(`🚀 Processing authorized message from ${msg.from}...`);
 
   try {
@@ -195,12 +202,47 @@ client.on('message', async (msg) => {
       }
     }
 
+    // Fetch context count
+    let contextSetting = await prisma.settings.findFirst();
+    let contextCount = contextSetting ? contextSetting.contextCount : 8;
+    
+    // Fetch recent messages for this user (today's chat)
+    let chatContext = [];
+    if (contextCount > 0) {
+      const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
+      const dailyChats = await prisma.dailyChat.findMany({
+        where: { date: dateStr, senderPhone: resolvedPhone }
+      });
+      const dailyChat = dailyChats[0];
+      
+      if (dailyChat) {
+        // Fetch up to contextCount * 2 messages (to include both user and bot)
+        let pastMessages = await prisma.message.findMany({
+          where: { dailyChatId: dailyChat.id },
+          orderBy: { timestamp: 'desc' },
+          take: contextCount * 2
+        });
+        
+        // Reverse to chronological order
+        pastMessages.reverse();
+        
+        chatContext = pastMessages.map(m => ({
+          role: m.sender === 'bot' ? 'assistant' : 'user',
+          content: m.body
+        }));
+      }
+    }
+
+    let messagesPayload = [{ role: "system", content: systemPrompt }];
+    if (chatContext.length > 0) {
+      messagesPayload = messagesPayload.concat(chatContext);
+    } else {
+      messagesPayload.push({ role: "user", content: msg.body });
+    }
+
     const response = await openai.chat.completions.create({
       model: process.env.MODEL_NAME || "google/gemini-3.1-flash-lite",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: msg.body }
-      ]
+      messages: messagesPayload
     });
 
     const reply = response.choices[0].message.content;

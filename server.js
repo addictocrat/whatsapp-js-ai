@@ -98,6 +98,49 @@ app.delete('/api/cron/:id', async (req, res) => {
   res.json({ success: true });
 });
 
+// --- Settings API ---
+
+app.get('/api/settings', async (req, res) => {
+  let settings = await prisma.settings.findFirst();
+  if (!settings) {
+    settings = await prisma.settings.create({ data: { contextCount: 8, isPaused: false } });
+  }
+  res.json(settings);
+});
+
+app.post('/api/settings', async (req, res) => {
+  const { contextCount, isPaused } = req.body;
+  let settings = await prisma.settings.findFirst();
+  
+  let count = 8;
+  if (contextCount !== undefined && contextCount !== '') {
+    const parsed = parseInt(contextCount);
+    if (!isNaN(parsed)) {
+      count = parsed;
+    }
+  }
+
+  const data = { contextCount: count };
+  if (isPaused !== undefined) {
+    data.isPaused = !!isPaused;
+  }
+
+  if (settings) {
+    settings = await prisma.settings.update({
+      where: { id: settings.id },
+      data
+    });
+  } else {
+    settings = await prisma.settings.create({
+      data: {
+        contextCount: count,
+        isPaused: !!isPaused
+      }
+    });
+  }
+  res.json(settings);
+});
+
 export function startServer(port = 3000) {
   app.listen(port, () => {
     console.log(`🌐 Web GUI running on port ${port}`);

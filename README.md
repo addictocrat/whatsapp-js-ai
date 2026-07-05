@@ -1,11 +1,11 @@
 # WhatsApp AI Assistant
 
-A lightweight, secure WhatsApp AI assistant powered by [whatsapp-web.js](https://wwebjs.dev/) and OpenRouter. It features a Web GUI, Database-backed Chat Logs, dynamic Instructions, and automated cron tasks.
+A lightweight, secure WhatsApp AI assistant powered by [whatsapp-web.js](https://wwebjs.dev/) and OpenRouter. It features a Web GUI, mini RAG with instructions, conversational memory and automated cron tasks.
 
 ## System Components & Architecture
 - **Headless WhatsApp Engine**: Leverages a sandboxed Chromium instance via `puppeteer` to emulate full-fidelity user interactions on WhatsApp Web, avoiding official API bottlenecks and restrictions.
-- **PostgreSQL Database**: Uses Prisma ORM to persistently store System Instructions, Daily Chat Logs, and scheduled Cron Tasks. Chat logs are uniquely grouped by `DD/MM/YY-Phone-FirstMessage`.
-- **Minimalist Web GUI**: An Express backend and Vanilla JS frontend (exposed on Port 3000) allows you to dynamically update the active AI Instruction, review chat histories, and schedule new automated tasks without touching the code.
+- **PostgreSQL Database**: Uses Prisma ORM to persistently store System Instructions, Daily Chat Logs, scheduled Cron Tasks, and Context Settings. Chat logs are uniquely grouped by `DD/MM/YY-Phone-FirstMessage`.
+- **Minimalist Web GUI**: An Express backend and Vanilla JS frontend (exposed on Port 3000) allows you to dynamically update the instructions and schedule new automated tasks without touching the code.
 - **Scheduled Task Engine (Cron Jobs)**: Powered by a robust combination of `BullMQ` and `Redis`, executing high-precision, timezone-aware repeatable tasks. Tasks are managed directly from the Web GUI.
 
 ## Local Setup
@@ -45,12 +45,15 @@ npm start
 2. Open WhatsApp on the phone you want to use as the bot (your "extra" phone).
 3. Go to **Settings > Linked Devices > Link a Device** and scan the QR code.
 4. Wait for the `✅ WhatsApp AI is ready and listening!` message.
-5. Open your browser and navigate to `http://localhost:3000` to access the Web GUI and set your first System Instruction.
-6. Text your bot from your *main* phone number!
+5. Open your browser and navigate to `http://localhost:3000` to access the Web GUI.
+6. Configure your first System Instruction, and adjust the Context Config (conversational memory length) as desired.
+7. Text your bot from your *main* phone number!
 
-## Modifying the Schedule & Instructions
+## Modifying Schedule, Instructions, & Memory Context
 
-Both System Instructions and Scheduled Tasks (Cron Jobs) are now managed dynamically via the Web GUI at `http://localhost:3000`.
+System Instructions, Scheduled Tasks (Cron Jobs), and Memory Context (the count of previous message pairs fed to the AI) are managed dynamically via the Web GUI at `http://localhost:3000`.
+
+- **Context Config**: By default, the bot remembers the last 8 message pairs (16 total messages containing both user inputs and AI replies) in a conversation. You can change this count via the "Context Config" tab in the GUI to allow the AI to follow up and remember previous messages. Set it to `0` to disable history and have a fresh context for each message.
 
 ## Deploying on Coolify
 

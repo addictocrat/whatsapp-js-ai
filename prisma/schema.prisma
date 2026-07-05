@@ -41,3 +41,9 @@ model CronTask {
   prompt    String
   isActive  Boolean   @default(true)
 }
+
+model Settings {
+  id           Int     @id @default(1)
+  contextCount Int     @default(8)
+  isPaused     Boolean @default(false)
+}

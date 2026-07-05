@@ -1,0 +1,167 @@
+/* Minimal, high contrast, non-rounded style as requested */
+body {
+  margin: 0;
+  font-family: monospace;
+  background: white;
+  color: black;
+  display: flex;
+  height: 100vh;
+  font-size: 12px;
+}
+
+.sidebar {
+  width: 200px;
+  border-right: 2px solid black;
+  padding: 20px;
+}
+
+.sidebar h2 {
+  font-size: 16px;
+  margin-top: 0;
+  border-bottom: 2px solid black;
+  padding-bottom: 10px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  margin-bottom: 10px;
+}
+
+.sidebar a {
+  text-decoration: none;
+  color: black;
+  display: block;
+  padding: 5px;
+  border: 1px solid transparent;
+}
+
+.sidebar a:hover {
+  border: 1px solid black;
+}
+
+.main-content {
+  flex-grow: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+section {
+  display: none;
+}
+
+section.active {
+  display: block;
+}
+
+h2 {
+  font-size: 18px;
+  border-bottom: 2px solid black;
+  padding-bottom: 5px;
+}
+
+h3 {
+  font-size: 14px;
+}
+
+.card {
+  border: 2px solid black;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+input, textarea, select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid black;
+  border-radius: 0;
+  padding: 8px;
+  font-family: monospace;
+  font-size: 12px;
+  margin-bottom: 10px;
+  background: white;
+  color: black;
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+button {
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 0;
+  padding: 8px 12px;
+  font-family: monospace;
+  font-size: 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+button:hover {
+  background: white;
+  color: black;
+  border: 1px solid black;
+}
+
+button.danger {
+  background: white;
+  color: black;
+  border: 1px solid black;
+}
+
+button.danger:hover {
+  background: black;
+  color: white;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+th, td {
+  border: 1px solid black;
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background: black;
+  color: white;
+}
+
+/* Chats specifically */
+.chat-log {
+  border: 2px solid black;
+  margin-bottom: 15px;
+}
+
+.chat-header {
+  background: black;
+  color: white;
+  padding: 8px;
+  font-weight: bold;
+}
+
+.chat-messages {
+  padding: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.msg {
+  margin-bottom: 5px;
+  border-bottom: 1px dashed #ccc;
+  padding-bottom: 5px;
+}
+
+.msg strong {
+  text-decoration: underline;
+}

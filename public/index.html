@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp AI Config</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="sidebar">
+    <h2>AI Config</h2>
+    <ul>
+      <li><a href="#" onclick="showSection('instructions')">Instructions</a></li>
+      <li><a href="#" onclick="showSection('chats')">Daily Chats</a></li>
+      <li><a href="#" onclick="showSection('cron')">Cron Tasks</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    
+    <!-- Instructions Section -->
+    <section id="instructions" class="active">
+      <h2>System Instructions</h2>
+      <div class="card">
+        <h3 id="inst-form-title">Add New Instruction</h3>
+        <input type="hidden" id="inst-id">
+        <input type="text" id="inst-name" placeholder="Instruction Name">
+        <textarea id="inst-content" placeholder="System prompt..."></textarea>
+        <button id="inst-submit-btn" onclick="saveInstruction()">Add</button>
+        <button id="inst-cancel-btn" style="display:none;" class="danger" onclick="cancelInstructionEdit()">Cancel</button>
+      </div>
+      <table id="instructions-table">
+        <thead>
+          <tr>
+            <th>Active</th>
+            <th>Name</th>
+            <th>Content</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Chats Section -->
+    <section id="chats">
+      <h2>Daily Chat Logs</h2>
+      <div id="chats-container"></div>
+    </section>
+
+    <!-- Cron Section -->
+    <section id="cron">
+      <h2>Cron Tasks</h2>
+      <div class="card">
+        <h3>Add New Task</h3>
+        <input type="text" id="cron-name" placeholder="Task Name">
+        
+        <label for="cron-type">Schedule Type:</label>
+        <select id="cron-type" onchange="toggleScheduleInputs()">
+          <option value="one-time">One-time execution</option>
+          <option value="daily" selected>Repetitive (Daily)</option>
+          <option value="interval">Repetitive (Interval)</option>
+        </select>
+        
+        <div id="div-one-time" style="display:none; margin-top: 10px;">
+          <label for="cron-datetime">Date & Time:</label>
+          <input type="datetime-local" id="cron-datetime">
+        </div>
+        
+        <div id="div-daily" style="margin-top: 10px;">
+          <label for="cron-time">Daily Time (24h format):</label>
+          <input type="time" id="cron-time" value="13:00">
+        </div>
+        
+        <div id="div-interval" style="display:none; margin-top: 10px;">
+          <label for="cron-interval-val">Every:</label>
+          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <input type="number" id="cron-interval-val" placeholder="Value" min="1" style="margin-bottom:0;">
+            <select id="cron-interval-unit" style="margin-bottom:0; width: 120px;">
+              <option value="minutes">Minutes</option>
+              <option value="hours">Hours</option>
+            </select>
+          </div>
+        </div>
+
+        <input type="text" id="cron-tz" placeholder="Timezone" value="Europe/Istanbul" style="margin-top: 10px;">
+        <textarea id="cron-prompt" placeholder="Prompt for the AI to execute..."></textarea>
+        <button onclick="addCronTask()">Add Task</button>
+      </div>
+      <table id="cron-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Pattern</th>
+            <th>Timezone</th>
+            <th>Prompt</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

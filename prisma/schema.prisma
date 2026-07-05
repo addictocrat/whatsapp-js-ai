@@ -1,0 +1,43 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Instruction {
+  id        Int      @id @default(autoincrement())
+  name      String
+  content   String
+  isActive  Boolean  @default(false)
+}
+
+model DailyChat {
+  id           String    @id
+  date         String
+  senderPhone  String
+  firstMessage String
+  messages     Message[]
+}
+
+model Message {
+  id          Int       @id @default(autoincrement())
+  dailyChatId String
+  body        String
+  sender      String
+  timestamp   DateTime  @default(now())
+  dailyChat   DailyChat @relation(fields: [dailyChatId], references: [id], onDelete: Cascade)
+}
+
+model CronTask {
+  id        Int       @id @default(autoincrement())
+  name      String
+  pattern   String?
+  executeAt DateTime?
+  isOneTime Boolean   @default(false)
+  timezone  String    @default("Europe/Istanbul")
+  prompt    String
+  isActive  Boolean   @default(true)
+}

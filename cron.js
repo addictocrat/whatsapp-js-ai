@@ -196,7 +196,22 @@ export async function checkYoutubeChannel(channelId, client, openai, prisma) {
       const transcript = await YoutubeTranscript.fetchTranscript(videoId);
       transcriptText = transcript.map(t => t.text).join(' ');
     } catch (err) {
+      if (err.message.includes('Transcript is disabled') || err.message.includes('No transcripts')) {
+        console.log(`ℹ️ Transcript not available yet for video ${videoId}. Reverting lastVideoId...`);
+        // Revert lastVideoId so it can be retried later
+        await prisma.youtubeChannel.update({
+          where: { id: channel.id },
+          data: { lastVideoId: channel.lastVideoId }
+        });
+        return { newVideo: false, reason: "Transcript not yet available (auto-generated captions might still be processing)" };
+      }
+
       console.error(`❌ Could not fetch transcript for video ${videoId}:`, err.message);
+      // Revert lastVideoId on other errors too so we retry
+      await prisma.youtubeChannel.update({
+        where: { id: channel.id },
+        data: { lastVideoId: channel.lastVideoId }
+      });
       throw new Error(`Could not fetch transcript for video ${videoId}: ${err.message}`);
     }
 

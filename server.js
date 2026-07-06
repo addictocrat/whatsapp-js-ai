@@ -100,6 +100,53 @@ app.delete('/api/cron/:id', async (req, res) => {
   res.json({ success: true });
 });
 
+// --- Youtube Tracker API ---
+
+app.get('/api/youtube', async (req, res) => {
+  const channels = await prisma.youtubeChannel.findMany({ orderBy: { id: 'asc' } });
+  res.json(channels);
+});
+
+app.post('/api/youtube', async (req, res) => {
+  const { channelId, name, checkIntervalHours, resumePrompt, modelName } = req.body;
+  const newChannel = await prisma.youtubeChannel.create({
+    data: { 
+      channelId, 
+      name, 
+      checkIntervalHours: parseInt(checkIntervalHours) || 1, 
+      resumePrompt, 
+      modelName,
+      isActive: true 
+    }
+  });
+  res.json(newChannel);
+});
+
+app.put('/api/youtube/:id', async (req, res) => {
+  const { id } = req.params;
+  const { channelId, name, checkIntervalHours, resumePrompt, modelName, isActive } = req.body;
+  
+  const data = {};
+  if (channelId !== undefined) data.channelId = channelId;
+  if (name !== undefined) data.name = name;
+  if (checkIntervalHours !== undefined) data.checkIntervalHours = parseInt(checkIntervalHours);
+  if (resumePrompt !== undefined) data.resumePrompt = resumePrompt;
+  if (modelName !== undefined) data.modelName = modelName;
+  if (isActive !== undefined) data.isActive = isActive;
+
+  const updated = await prisma.youtubeChannel.update({
+    where: { id: parseInt(id) },
+    data
+  });
+  res.json(updated);
+});
+
+app.delete('/api/youtube/:id', async (req, res) => {
+  const { id } = req.params;
+  await prisma.youtubeChannel.delete({ where: { id: parseInt(id) } });
+  res.json({ success: true });
+});
+
 // --- Settings API ---
 
 app.get('/api/settings', async (req, res) => {

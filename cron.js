@@ -1,5 +1,6 @@
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
+import { YoutubeTranscript } from 'youtube-transcript';
 
 /**
  * Initializes and schedules repeatable cron jobs via BullMQ
@@ -94,6 +95,124 @@ export async function setupCronJobs(client, openai, prisma) {
       }
     } catch (error) {
       console.error(`❌ Failed to run cron job '${job.name}':`, error);
+    }
+  }, { connection });
+
+  // --- YouTube Cron Setup ---
+  const ytQueue = new Queue('youtube-cron', { connection });
+  const oldYtJobs = await ytQueue.getRepeatableJobs();
+  for (const job of oldYtJobs) {
+    await ytQueue.removeRepeatableByKey(job.key);
+  }
+
+  const ytChannels = await prisma.youtubeChannel.findMany({ where: { isActive: true } });
+  for (const channel of ytChannels) {
+    const pattern = `0 */${channel.checkIntervalHours} * * *`;
+    await ytQueue.add(
+      `yt-${channel.id}`,
+      { channelId: channel.id },
+      { repeat: { pattern } }
+    );
+    console.log(`⏰ YouTube job for '${channel.name}' scheduled for ${pattern}.`);
+  }
+
+  const ytWorker = new Worker('youtube-cron', async (job) => {
+    const channelId = job.data.channelId;
+    const channel = await prisma.youtubeChannel.findUnique({ where: { id: channelId } });
+    if (!channel || !channel.isActive) return;
+
+    console.log(`▶️ Checking YouTube channel '${channel.name}' for new videos...`);
+
+    try {
+      const apiKey = process.env.YOUTUBE_API_KEY;
+      if (!apiKey) {
+        console.error("❌ YOUTUBE_API_KEY is not set.");
+        return;
+      }
+
+      // Fetch latest video
+      const url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channel.channelId}&part=snippet,id&order=date&maxResults=1`;
+      const ytRes = await fetch(url);
+      const ytData = await ytRes.json();
+
+      if (!ytData.items || ytData.items.length === 0) {
+        console.log(`ℹ️ No videos found for channel '${channel.name}'.`);
+        return;
+      }
+
+      // We only care about videos
+      const latestVideo = ytData.items.find(item => item.id.kind === 'youtube#video');
+      if (!latestVideo) return;
+
+      const videoId = latestVideo.id.videoId;
+
+      if (channel.lastVideoId === videoId) {
+        console.log(`ℹ️ No new videos for channel '${channel.name}'.`);
+        return;
+      }
+
+      console.log(`🆕 New video found for '${channel.name}': ${videoId}. Extracting transcript...`);
+
+      // Update lastVideoId immediately to prevent duplicate runs
+      await prisma.youtubeChannel.update({
+        where: { id: channel.id },
+        data: { lastVideoId: videoId }
+      });
+
+      // Extract transcript
+      let transcriptText = "";
+      try {
+        const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+        transcriptText = transcript.map(t => t.text).join(' ');
+      } catch (err) {
+        console.error(`❌ Could not fetch transcript for video ${videoId}:`, err.message);
+        return;
+      }
+
+      if (!transcriptText) {
+         console.log(`ℹ️ Transcript empty for video ${videoId}.`);
+         return;
+      }
+
+      // Truncate transcript to 50k chars to avoid hitting token limits
+      if (transcriptText.length > 50000) {
+        transcriptText = transcriptText.substring(0, 50000) + "... [TRUNCATED]";
+      }
+
+      const modelToUse = channel.modelName || process.env.MODEL_NAME || "google/gemini-3.1-flash-lite";
+      
+      const prompt = `${channel.resumePrompt}\n\nTranscript:\n${transcriptText}`;
+
+      const response = await openai.chat.completions.create({
+        model: modelToUse,
+        messages: [
+          { role: "system", content: "You are an AI assistant tasked with summarizing a YouTube video transcript." },
+          { role: "user", content: prompt }
+        ]
+      });
+
+      const reply = response.choices[0].message.content;
+
+      // Send message
+      const envNumbers = (process.env.ALLOWED_PHONE_NUMBERS || '')
+        .split(',')
+        .map(num => num.trim())
+        .filter(num => num.length > 0);
+        
+      const dbPhones = await prisma.phoneNumber.findMany();
+      const dbNumbers = dbPhones.map(p => p.number.trim());
+      const combinedNumbers = [...new Set([...envNumbers, ...dbNumbers])];
+
+      const prefix = `📺 *New Video from ${channel.name}!*\nhttps://youtube.com/watch?v=${videoId}\n\n`;
+
+      for (const num of combinedNumbers) {
+        const numberId = `${num}@c.us`;
+        await client.sendMessage(numberId, prefix + reply);
+        console.log(`✅ YouTube summary for '${channel.name}' sent to ${numberId}`);
+      }
+
+    } catch (error) {
+      console.error(`❌ Failed to run YouTube cron for '${channel.name}':`, error);
     }
   }, { connection });
 }

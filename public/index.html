@@ -13,6 +13,7 @@
       <li><a href="#" onclick="showSection('instructions')">Instructions</a></li>
       <li><a href="#" onclick="showSection('chats')">Daily Chats</a></li>
       <li><a href="#" onclick="showSection('cron')">Cron Tasks</a></li>
+      <li><a href="#" onclick="showSection('youtube')">YouTube Tracker</a></li>
       <li><a href="#" onclick="showSection('phones')">Allowed Phones</a></li>
       <li><a href="#" onclick="showSection('settings')">Settings</a></li>
     </ul>
@@ -116,6 +117,35 @@
             <th>Name</th>
             <th>Pattern</th>
             <th>Timezone</th>
+            <th>Model</th>
+            <th>Prompt</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- YouTube Tracker Section -->
+    <section id="youtube">
+      <h2>YouTube Tracker</h2>
+      <div class="card">
+        <h3 id="yt-form-title">Add New Channel</h3>
+        <input type="hidden" id="yt-id">
+        <input type="text" id="yt-channel-id" placeholder="Channel ID (e.g. UC_x5XG1OV2P6uZZ5FSM9Ttw)">
+        <input type="text" id="yt-name" placeholder="Channel Name">
+        <input type="number" id="yt-interval" placeholder="Check Interval (hours)" min="1">
+        <input type="text" id="yt-model" placeholder="Model Name (Optional)">
+        <textarea id="yt-prompt" placeholder="Resume Prompt (e.g. Summarize this video...)"></textarea>
+        <button id="yt-submit-btn" onclick="saveYoutubeChannel()">Add Channel</button>
+        <button id="yt-cancel-btn" style="display:none;" class="danger" onclick="cancelYoutubeEdit()">Cancel</button>
+      </div>
+      <table id="youtube-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Channel ID</th>
+            <th>Interval (h)</th>
             <th>Model</th>
             <th>Prompt</th>
             <th>Actions</th>

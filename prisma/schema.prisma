@@ -59,5 +59,15 @@ model PhoneNumber {
 model Settings {
   id           Int     @id @default(1)
   contextCount Int     @default(8)
-  isPaused     Boolean @default(false)
+}
+
+model YoutubeChannel {
+  id                 Int      @id @default(autoincrement())
+  channelId          String
+  name               String
+  checkIntervalHours Int
+  resumePrompt       String
+  lastVideoId        String?
+  modelName          String?
+  isActive           Boolean  @default(true)
 }

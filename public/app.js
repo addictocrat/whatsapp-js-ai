@@ -6,6 +6,7 @@ function showSection(id) {
   if (id === 'chats') loadChats();
   if (id === 'cron') loadCronTasks();
   if (id === 'phones') loadPhones();
+  if (id === 'youtube') loadYoutubeChannels();
   if (id === 'settings') loadSettings();
 }
 
@@ -352,6 +353,96 @@ async function deletePhone(id) {
   if (!confirm("Delete this phone number?")) return;
   await fetch(`/api/phones/${id}`, { method: 'DELETE' });
   loadPhones();
+}
+
+// --- YouTube Tracker ---
+let editingYtId = null;
+let ytChannelsList = [];
+
+async function loadYoutubeChannels() {
+  const res = await fetch('/api/youtube');
+  const data = await res.json();
+  ytChannelsList = data;
+  const tbody = document.querySelector('#youtube-table tbody');
+  tbody.innerHTML = '';
+  data.forEach(channel => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${channel.name}</td>
+      <td>${channel.channelId}</td>
+      <td>${channel.checkIntervalHours}</td>
+      <td>${channel.modelName || '<em>Default</em>'}</td>
+      <td><pre style="margin:0; max-height:60px; overflow:auto; white-space: pre-wrap;">${channel.resumePrompt}</pre></td>
+      <td>
+        <button onclick="editYoutubeChannel(${channel.id})">Edit</button>
+        <button class="danger" onclick="deleteYoutubeChannel(${channel.id})">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function editYoutubeChannel(id) {
+  const channel = ytChannelsList.find(c => c.id === id);
+  if (!channel) return;
+  editingYtId = id;
+  document.getElementById('yt-form-title').innerText = "Edit Channel";
+  document.getElementById('yt-id').value = id;
+  document.getElementById('yt-channel-id').value = channel.channelId;
+  document.getElementById('yt-name').value = channel.name;
+  document.getElementById('yt-interval').value = channel.checkIntervalHours;
+  document.getElementById('yt-model').value = channel.modelName || '';
+  document.getElementById('yt-prompt').value = channel.resumePrompt;
+  document.getElementById('yt-submit-btn').innerText = "Update Channel";
+  document.getElementById('yt-cancel-btn').style.display = "inline-block";
+}
+
+function cancelYoutubeEdit() {
+  editingYtId = null;
+  document.getElementById('yt-form-title').innerText = "Add New Channel";
+  document.getElementById('yt-id').value = '';
+  document.getElementById('yt-channel-id').value = '';
+  document.getElementById('yt-name').value = '';
+  document.getElementById('yt-interval').value = '';
+  document.getElementById('yt-model').value = '';
+  document.getElementById('yt-prompt').value = '';
+  document.getElementById('yt-submit-btn').innerText = "Add Channel";
+  document.getElementById('yt-cancel-btn').style.display = "none";
+}
+
+async function saveYoutubeChannel() {
+  const channelId = document.getElementById('yt-channel-id').value;
+  const name = document.getElementById('yt-name').value;
+  const checkIntervalHours = document.getElementById('yt-interval').value;
+  const modelName = document.getElementById('yt-model').value || null;
+  const resumePrompt = document.getElementById('yt-prompt').value;
+  
+  if (!channelId || !name || !checkIntervalHours || !resumePrompt) {
+    return alert("Fill all required fields");
+  }
+
+  if (editingYtId) {
+    await fetch(`/api/youtube/${editingYtId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channelId, name, checkIntervalHours, modelName, resumePrompt })
+    });
+    cancelYoutubeEdit();
+  } else {
+    await fetch('/api/youtube', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channelId, name, checkIntervalHours, modelName, resumePrompt })
+    });
+    cancelYoutubeEdit();
+  }
+  loadYoutubeChannels();
+}
+
+async function deleteYoutubeChannel(id) {
+  if (!confirm("Delete this YouTube Channel?")) return;
+  await fetch(`/api/youtube/${id}`, { method: 'DELETE' });
+  loadYoutubeChannels();
 }
 
 // Init

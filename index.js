@@ -73,7 +73,7 @@ client.on('ready', async () => {
   console.log('✅ WhatsApp AI is ready and listening!');
   
   // Start the GUI server
-  startServer(3000);
+  startServer(3000, client, openai);
   
   // Setup cron jobs reading from database
   await setupCronJobs(client, openai, prisma);

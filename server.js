@@ -3,12 +3,16 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { checkYoutubeChannel } from './cron.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const prisma = new PrismaClient();
 const app = express();
+
+let whatsappClient = null;
+let openaiClient = null;
 
 app.use(cors());
 app.use(express.json());
@@ -149,6 +153,20 @@ app.delete('/api/youtube/:id', async (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/youtube/:id/trigger', async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (!whatsappClient || !openaiClient) {
+      return res.status(500).json({ error: "WhatsApp client or OpenAI client is not initialized." });
+    }
+    const result = await checkYoutubeChannel(parseInt(id), whatsappClient, openaiClient, prisma);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error(`Error triggering YouTube check:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 
 // --- Phones API ---
@@ -213,7 +231,9 @@ app.delete('/api/phones/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-export function startServer(port = 3000) {
+export function startServer(port = 3000, client, openai) {
+  whatsappClient = client;
+  openaiClient = openai;
   app.listen(port, () => {
     console.log(`🌐 Web GUI running on port ${port}`);
   });

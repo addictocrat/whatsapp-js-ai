@@ -379,6 +379,7 @@ async function loadYoutubeChannels() {
       <td><pre style="margin:0; max-height:60px; overflow:auto; white-space: pre-wrap;">${channel.resumePrompt}</pre></td>
       <td>
         <button onclick="editYoutubeChannel(${channel.id})">Edit</button>
+        <button onclick="triggerYoutubeCheck(${channel.id}, this)">Trigger</button>
         <button class="danger" onclick="deleteYoutubeChannel(${channel.id})">Delete</button>
       </td>
     `;
@@ -447,6 +448,29 @@ async function deleteYoutubeChannel(id) {
   if (!confirm("Delete this YouTube Channel?")) return;
   await fetch(`/api/youtube/${id}`, { method: 'DELETE' });
   loadYoutubeChannels();
+}
+
+async function triggerYoutubeCheck(id, btn) {
+  const originalText = btn.innerText;
+  btn.disabled = true;
+  btn.innerText = "Checking...";
+  try {
+    const res = await fetch(`/api/youtube/${id}/trigger`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to trigger check");
+    }
+    if (data.newVideo) {
+      alert(`New video found!\nVideo ID: ${data.videoId}\nSummary sent to: ${data.targetNumbers.join(', ')}`);
+    } else {
+      alert(`No new video found. (${data.reason || 'up to date'})`);
+    }
+  } catch (err) {
+    alert("Error: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = originalText;
+  }
 }
 
 // Init

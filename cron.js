@@ -129,106 +129,130 @@ export async function setupCronJobs(client, openai, prisma) {
     const channel = await prisma.youtubeChannel.findUnique({ where: { id: channelId } });
     if (!channel || !channel.isActive) return;
 
-    console.log(`▶️ Checking YouTube channel '${channel.name}' for new videos...`);
-
     try {
-      const apiKey = process.env.YOUTUBE_API_KEY;
-      if (!apiKey) {
-        console.error("❌ YOUTUBE_API_KEY is not set.");
-        return;
-      }
-
-      // Fetch latest video
-      const url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channel.channelId}&part=snippet,id&order=date&maxResults=1`;
-      const ytRes = await fetch(url);
-      const ytData = await ytRes.json();
-
-      if (!ytData.items || ytData.items.length === 0) {
-        console.log(`ℹ️ No videos found for channel '${channel.name}'.`);
-        return;
-      }
-
-      // We only care about videos
-      const latestVideo = ytData.items.find(item => item.id.kind === 'youtube#video');
-      if (!latestVideo) return;
-
-      const videoId = latestVideo.id.videoId;
-
-      if (channel.lastVideoId === videoId) {
-        console.log(`ℹ️ No new videos for channel '${channel.name}'.`);
-        return;
-      }
-
-      console.log(`🆕 New video found for '${channel.name}': ${videoId}. Extracting transcript...`);
-
-      // Update lastVideoId immediately to prevent duplicate runs
-      await prisma.youtubeChannel.update({
-        where: { id: channel.id },
-        data: { lastVideoId: videoId }
-      });
-
-      // Extract transcript
-      let transcriptText = "";
-      try {
-        const transcript = await YoutubeTranscript.fetchTranscript(videoId);
-        transcriptText = transcript.map(t => t.text).join(' ');
-      } catch (err) {
-        console.error(`❌ Could not fetch transcript for video ${videoId}:`, err.message);
-        return;
-      }
-
-      if (!transcriptText) {
-         console.log(`ℹ️ Transcript empty for video ${videoId}.`);
-         return;
-      }
-
-      // Truncate transcript to 50k chars to avoid hitting token limits
-      if (transcriptText.length > 50000) {
-        transcriptText = transcriptText.substring(0, 50000) + "... [TRUNCATED]";
-      }
-
-      const modelToUse = process.env.MODEL_NAME || "google/gemini-3.1-flash-lite";
-      
-      const prompt = `${channel.resumePrompt}\n\nTranscript:\n${transcriptText}`;
-
-      const response = await openai.chat.completions.create({
-        model: modelToUse,
-        messages: [
-          { role: "system", content: "You are an AI assistant tasked with summarizing a YouTube video transcript." },
-          { role: "user", content: prompt }
-        ]
-      });
-
-      const reply = response.choices[0].message.content;
-
-      // Send message
-      let targetNumbers = [];
-      if (channel.targetPhones && channel.targetPhones.trim().length > 0) {
-        targetNumbers = channel.targetPhones
-          .split(',')
-          .map(num => num.trim())
-          .filter(num => num.length > 0);
-      } else {
-        const envNumbers = (process.env.ALLOWED_PHONE_NUMBERS || '')
-          .split(',')
-          .map(num => num.trim())
-          .filter(num => num.length > 0);
-          
-        const dbPhones = await prisma.phoneNumber.findMany();
-        const dbNumbers = dbPhones.map(p => p.number.trim());
-        targetNumbers = [...new Set([...envNumbers, ...dbNumbers])];
-      }
-
-      const prefix = `📺 *New Video from ${channel.name}!*\nhttps://youtube.com/watch?v=${videoId}\n\n`;
-
-      for (const num of targetNumbers) {
-        const numberId = `${num}@c.us`;
-        await client.sendMessage(numberId, prefix + reply);
-        console.log(`✅ YouTube summary for '${channel.name}' sent to ${numberId}`);
-      }
-
+      await checkYoutubeChannel(channelId, client, openai, prisma);
     } catch (error) {
       console.error(`❌ Failed to run YouTube cron for '${channel.name}':`, error);
     }
   }, { connection });
+}
+
+/**
+ * Checks a specific YouTube channel for a new video, generates an AI summary, and sends it to the target phone numbers.
+ * @param {number} channelId 
+ * @param {import('whatsapp-web.js').Client} client 
+ * @param {import('openai').OpenAI} openai 
+ * @param {import('@prisma/client').PrismaClient} prisma
+ */
+export async function checkYoutubeChannel(channelId, client, openai, prisma) {
+  const channel = await prisma.youtubeChannel.findUnique({ where: { id: channelId } });
+  if (!channel) {
+    throw new Error(`Channel not found: ${channelId}`);
+  }
+
+  console.log(`▶️ Checking YouTube channel '${channel.name}' for new videos...`);
+
+  try {
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.error("❌ YOUTUBE_API_KEY is not set.");
+      throw new Error("YOUTUBE_API_KEY is not set.");
+    }
+
+    // Fetch latest video
+    const url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channel.channelId}&part=snippet,id&order=date&maxResults=1`;
+    const ytRes = await fetch(url);
+    const ytData = await ytRes.json();
+
+    if (!ytData.items || ytData.items.length === 0) {
+      console.log(`ℹ️ No videos found for channel '${channel.name}'.`);
+      return { newVideo: false, reason: "No videos found" };
+    }
+
+    // We only care about videos
+    const latestVideo = ytData.items.find(item => item.id.kind === 'youtube#video');
+    if (!latestVideo) {
+      return { newVideo: false, reason: "No video items found" };
+    }
+
+    const videoId = latestVideo.id.videoId;
+
+    if (channel.lastVideoId === videoId) {
+      console.log(`ℹ️ No new videos for channel '${channel.name}'.`);
+      return { newVideo: false, reason: "No new video (matches lastVideoId)" };
+    }
+
+    console.log(`🆕 New video found for '${channel.name}': ${videoId}. Extracting transcript...`);
+
+    // Update lastVideoId immediately to prevent duplicate runs
+    await prisma.youtubeChannel.update({
+      where: { id: channel.id },
+      data: { lastVideoId: videoId }
+    });
+
+    // Extract transcript
+    let transcriptText = "";
+    try {
+      const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+      transcriptText = transcript.map(t => t.text).join(' ');
+    } catch (err) {
+      console.error(`❌ Could not fetch transcript for video ${videoId}:`, err.message);
+      throw new Error(`Could not fetch transcript for video ${videoId}: ${err.message}`);
+    }
+
+    if (!transcriptText) {
+       console.log(`ℹ️ Transcript empty for video ${videoId}.`);
+       return { newVideo: false, reason: "Transcript is empty" };
+    }
+
+    // Truncate transcript to 50k chars to avoid hitting token limits
+    if (transcriptText.length > 50000) {
+      transcriptText = transcriptText.substring(0, 50000) + "... [TRUNCATED]";
+    }
+
+    const modelToUse = process.env.MODEL_NAME || "google/gemini-3.1-flash-lite";
+    
+    const prompt = `${channel.resumePrompt}\n\nTranscript:\n${transcriptText}`;
+
+    const response = await openai.chat.completions.create({
+      model: modelToUse,
+      messages: [
+        { role: "system", content: "You are an AI assistant tasked with summarizing a YouTube video transcript." },
+        { role: "user", content: prompt }
+      ]
+    });
+
+    const reply = response.choices[0].message.content;
+
+    // Send message
+    let targetNumbers = [];
+    if (channel.targetPhones && channel.targetPhones.trim().length > 0) {
+      targetNumbers = channel.targetPhones
+        .split(',')
+        .map(num => num.trim())
+        .filter(num => num.length > 0);
+    } else {
+      const envNumbers = (process.env.ALLOWED_PHONE_NUMBERS || '')
+        .split(',')
+        .map(num => num.trim())
+        .filter(num => num.length > 0);
+        
+      const dbPhones = await prisma.phoneNumber.findMany();
+      const dbNumbers = dbPhones.map(p => p.number.trim());
+      targetNumbers = [...new Set([...envNumbers, ...dbNumbers])];
+    }
+
+    const prefix = `📺 *New Video from ${channel.name}!*\nhttps://youtube.com/watch?v=${videoId}\n\n`;
+
+    for (const num of targetNumbers) {
+      const numberId = `${num}@c.us`;
+      await client.sendMessage(numberId, prefix + reply);
+      console.log(`✅ YouTube summary for '${channel.name}' sent to ${numberId}`);
+    }
+
+    return { newVideo: true, videoId, targetNumbers };
+  } catch (error) {
+    console.error(`❌ Failed to run YouTube check for '${channel.name}':`, error);
+    throw error;
+  }
 }

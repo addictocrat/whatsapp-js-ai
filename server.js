@@ -22,21 +22,20 @@ app.get('/api/instructions', async (req, res) => {
 });
 
 app.post('/api/instructions', async (req, res) => {
-  const { name, content, modelName } = req.body;
+  const { name, content } = req.body;
   const newInst = await prisma.instruction.create({
-    data: { name, content, modelName, isActive: false }
+    data: { name, content, isActive: false }
   });
   res.json(newInst);
 });
 
 app.put('/api/instructions/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, content, modelName, isActive } = req.body;
+  const { name, content, isActive } = req.body;
 
   const data = {};
   if (name !== undefined) data.name = name;
   if (content !== undefined) data.content = content;
-  if (modelName !== undefined) data.modelName = modelName;
   if (isActive !== undefined) {
     data.isActive = isActive;
     if (isActive) {
@@ -81,14 +80,13 @@ app.get('/api/cron', async (req, res) => {
 });
 
 app.post('/api/cron', async (req, res) => {
-  const { name, pattern, timezone, prompt, isOneTime, executeAt, modelName, targetPhones } = req.body;
+  const { name, pattern, timezone, prompt, isOneTime, executeAt, targetPhones } = req.body;
   const newCron = await prisma.cronTask.create({
     data: { 
       name, 
       pattern, 
       timezone, 
       prompt, 
-      modelName,
       targetPhones,
       isOneTime: !!isOneTime, 
       executeAt: executeAt ? new Date(executeAt) : null,
@@ -112,14 +110,13 @@ app.get('/api/youtube', async (req, res) => {
 });
 
 app.post('/api/youtube', async (req, res) => {
-  const { channelId, name, checkIntervalHours, resumePrompt, modelName, targetPhones } = req.body;
+  const { channelId, name, checkIntervalHours, resumePrompt, targetPhones } = req.body;
   const newChannel = await prisma.youtubeChannel.create({
     data: { 
       channelId, 
       name, 
       checkIntervalHours: parseInt(checkIntervalHours) || 1, 
       resumePrompt, 
-      modelName,
       targetPhones,
       isActive: true 
     }
@@ -129,14 +126,13 @@ app.post('/api/youtube', async (req, res) => {
 
 app.put('/api/youtube/:id', async (req, res) => {
   const { id } = req.params;
-  const { channelId, name, checkIntervalHours, resumePrompt, modelName, isActive, targetPhones } = req.body;
+  const { channelId, name, checkIntervalHours, resumePrompt, isActive, targetPhones } = req.body;
   
   const data = {};
   if (channelId !== undefined) data.channelId = channelId;
   if (name !== undefined) data.name = name;
   if (checkIntervalHours !== undefined) data.checkIntervalHours = parseInt(checkIntervalHours);
   if (resumePrompt !== undefined) data.resumePrompt = resumePrompt;
-  if (modelName !== undefined) data.modelName = modelName;
   if (isActive !== undefined) data.isActive = isActive;
   if (targetPhones !== undefined) data.targetPhones = targetPhones;
 
@@ -153,48 +149,7 @@ app.delete('/api/youtube/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// --- Settings API ---
 
-app.get('/api/settings', async (req, res) => {
-  let settings = await prisma.settings.findFirst();
-  if (!settings) {
-    settings = await prisma.settings.create({ data: { contextCount: 8, isPaused: false } });
-  }
-  res.json(settings);
-});
-
-app.post('/api/settings', async (req, res) => {
-  const { contextCount, isPaused } = req.body;
-  let settings = await prisma.settings.findFirst();
-  
-  let count = 8;
-  if (contextCount !== undefined && contextCount !== '') {
-    const parsed = parseInt(contextCount);
-    if (!isNaN(parsed)) {
-      count = parsed;
-    }
-  }
-
-  const data = { contextCount: count };
-  if (isPaused !== undefined) {
-    data.isPaused = !!isPaused;
-  }
-
-  if (settings) {
-    settings = await prisma.settings.update({
-      where: { id: settings.id },
-      data
-    });
-  } else {
-    settings = await prisma.settings.create({
-      data: {
-        contextCount: count,
-        isPaused: !!isPaused
-      }
-    });
-  }
-  res.json(settings);
-});
 
 // --- Phones API ---
 
@@ -207,7 +162,7 @@ app.get('/api/phones', async (req, res) => {
 });
 
 app.post('/api/phones', async (req, res) => {
-  const { number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay, maxDailyMessages } = req.body;
+  const { number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay, maxDailyMessages, contextCount } = req.body;
   try {
     const newPhone = await prisma.phoneNumber.create({
       data: {
@@ -217,7 +172,8 @@ app.post('/api/phones', async (req, res) => {
         allowGroupChats: !!allowGroupChats,
         isEnabled: isEnabled !== undefined ? !!isEnabled : true,
         responseDelay: responseDelay ? parseInt(responseDelay) : 0,
-        maxDailyMessages: maxDailyMessages !== undefined ? parseInt(maxDailyMessages) : 40
+        maxDailyMessages: maxDailyMessages !== undefined ? parseInt(maxDailyMessages) : 40,
+        contextCount: contextCount !== undefined ? (isNaN(parseInt(contextCount)) ? 8 : parseInt(contextCount)) : 8
       }
     });
     res.json(newPhone);
@@ -228,7 +184,7 @@ app.post('/api/phones', async (req, res) => {
 
 app.put('/api/phones/:id', async (req, res) => {
   const { id } = req.params;
-  const { number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay, maxDailyMessages } = req.body;
+  const { number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay, maxDailyMessages, contextCount } = req.body;
   
   const data = {};
   if (number !== undefined) data.number = number;
@@ -238,6 +194,7 @@ app.put('/api/phones/:id', async (req, res) => {
   if (isEnabled !== undefined) data.isEnabled = !!isEnabled;
   if (responseDelay !== undefined) data.responseDelay = parseInt(responseDelay) || 0;
   if (maxDailyMessages !== undefined) data.maxDailyMessages = parseInt(maxDailyMessages) || 40;
+  if (contextCount !== undefined) data.contextCount = isNaN(parseInt(contextCount)) ? 8 : parseInt(contextCount);
 
   try {
     const updated = await prisma.phoneNumber.update({

@@ -30,7 +30,7 @@ export async function setupCronJobs(client, openai, prisma) {
         const delay = new Date(task.executeAt).getTime() - Date.now();
         await cronQueue.add(
           task.name,
-          { prompt: task.prompt, isOneTimeId: task.id, modelName: task.modelName, targetPhones: task.targetPhones },
+          { prompt: task.prompt, isOneTimeId: task.id, targetPhones: task.targetPhones },
           { delay }
         );
         console.log(`⏰ One-time job '${task.name}' scheduled for ${task.executeAt} (delay: ${Math.round(delay/1000)}s).`);
@@ -38,7 +38,7 @@ export async function setupCronJobs(client, openai, prisma) {
     } else if (task.pattern) {
       await cronQueue.add(
         task.name,
-        { prompt: task.prompt, modelName: task.modelName, targetPhones: task.targetPhones },
+        { prompt: task.prompt, targetPhones: task.targetPhones },
         {
           repeat: {
             pattern: task.pattern,
@@ -67,7 +67,7 @@ export async function setupCronJobs(client, openai, prisma) {
     }
 
     try {
-      const modelToUse = job.data.modelName || process.env.MODEL_NAME || "google/gemini-3.1-flash-lite";
+      const modelToUse = process.env.MODEL_NAME || "google/gemini-3.1-flash-lite";
       const response = await openai.chat.completions.create({
         model: modelToUse,
         messages: [
@@ -187,7 +187,7 @@ export async function setupCronJobs(client, openai, prisma) {
         transcriptText = transcriptText.substring(0, 50000) + "... [TRUNCATED]";
       }
 
-      const modelToUse = channel.modelName || process.env.MODEL_NAME || "google/gemini-3.1-flash-lite";
+      const modelToUse = process.env.MODEL_NAME || "google/gemini-3.1-flash-lite";
       
       const prompt = `${channel.resumePrompt}\n\nTranscript:\n${transcriptText}`;
 

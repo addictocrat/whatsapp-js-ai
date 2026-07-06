@@ -46,7 +46,7 @@ npm start
 3. Go to **Settings > Linked Devices > Link a Device** and scan the QR code.
 4. Wait for the `✅ WhatsApp AI is ready and listening!` message.
 5. Open your browser and navigate to `http://localhost:3000` to access the Web GUI.
-6. Configure your first System Instruction, and adjust the Context Config (conversational memory length) as desired.
+6. Configure your first System Instruction, and add/edit phone numbers to set their conversational memory length as desired.
 7. Text your bot from your *main* phone number!
 
 ## Modifying Schedule, Instructions, & Memory Context
@@ -59,11 +59,11 @@ System Instructions, Scheduled Tasks (Cron Jobs), Phone Numbers, and Memory Cont
     - Enable or disable AI responses entirely.
     - Set a custom response delay (in seconds) before the AI replies.
     - Set a max daily message limit (default is 40) to limit API credit consumption and prevent spam.
+    - Set the conversational memory length (number of previous message pairs to send as context, default is 8).
     - Map a custom AI model (e.g. `meta-llama/llama-3-70b-instruct`) and unique Instruction profile.
     - Toggle whether the bot should respond to messages from this number in Group Chats.
 - **Targeted Broadcasts**: When adding or editing Cron Tasks or YouTube Tracker channels, you can specify an optional list of target phone numbers (comma-separated). When set, execution notifications or video summaries will only be sent to those specified numbers rather than all registered phone numbers.
-- **Granular AI Models**: You can explicitly set the AI model to use on a per-Instruction profile and per-Cron task basis directly from the Web GUI, bypassing the default `MODEL_NAME` fallback defined in the `.env` file.
-- **Context Config**: By default, the bot remembers the last 8 message pairs (16 total messages containing both user inputs and AI replies) in a conversation. You can change this count via the "Context Config" tab in the GUI to allow the AI to follow up and remember previous messages. Set it to `0` to disable history and have a fresh context for each message.
+
 
 ## Deploying on Coolify
 

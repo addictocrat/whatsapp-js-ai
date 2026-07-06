@@ -207,12 +207,7 @@ client.on('message', async (msg) => {
   // Log incoming message to DB
   await logMessageToDb(resolvedPhone, msg.body, 'user');
 
-  // Check if AI responses are paused
-  const settings = await prisma.settings.findFirst();
-  if (settings && settings.isPaused) {
-    console.log("⏸️ AI responses are currently paused. Ignoring message.");
-    return;
-  }
+
 
   // Enforce daily message limit
   const dateStrForLimit = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
@@ -242,7 +237,6 @@ client.on('message', async (msg) => {
       const activeInst = await prisma.instruction.findFirst({ where: { isActive: true } });
       if (activeInst) {
         systemPrompt = activeInst.content;
-        if (activeInst.modelName) modelName = activeInst.modelName;
       } else if (fs.existsSync('./INSTRUCTIONS.md')) {
         systemPrompt = fs.readFileSync('./INSTRUCTIONS.md', 'utf-8');
       }
@@ -251,9 +245,6 @@ client.on('message', async (msg) => {
     if (dbPhoneSettings) {
       if (dbPhoneSettings.instruction) {
         systemPrompt = dbPhoneSettings.instruction.content;
-        if (dbPhoneSettings.instruction.modelName) {
-           modelName = dbPhoneSettings.instruction.modelName;
-        }
       } else {
         await fetchDefaultInstruction();
       }
@@ -265,8 +256,7 @@ client.on('message', async (msg) => {
     }
 
     // Fetch context count
-    let contextSetting = await prisma.settings.findFirst();
-    let contextCount = contextSetting ? contextSetting.contextCount : 8;
+    let contextCount = dbPhoneSettings ? dbPhoneSettings.contextCount : 8;
     
     // Fetch recent messages for this user (today's chat)
     let chatContext = [];

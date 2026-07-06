@@ -304,6 +304,7 @@ async function loadPhones() {
       <td>${phone.number}</td>
       <td>${phone.isEnabled ? '✅' : '❌'}</td>
       <td>${phone.responseDelay}s</td>
+      <td>${phone.maxDailyMessages}</td>
       <td>${phone.modelName || '<em>Default</em>'}</td>
       <td>${phone.instruction ? phone.instruction.name : '<em>Default Setup</em>'}</td>
       <td>${phone.allowGroupChats ? '✅ Yes' : '❌ No'}</td>
@@ -329,6 +330,7 @@ function editPhone(id) {
   document.getElementById('phone-group-chats').checked = phone.allowGroupChats;
   document.getElementById('phone-is-enabled').checked = phone.isEnabled !== false;
   document.getElementById('phone-delay').value = phone.responseDelay || 0;
+  document.getElementById('phone-limit').value = phone.maxDailyMessages !== undefined ? phone.maxDailyMessages : 40;
   document.getElementById('phone-submit-btn').innerText = "Update Phone";
   document.getElementById('phone-cancel-btn').style.display = "inline-block";
 }
@@ -343,6 +345,7 @@ function cancelPhoneEdit() {
   document.getElementById('phone-group-chats').checked = false;
   document.getElementById('phone-is-enabled').checked = true;
   document.getElementById('phone-delay').value = 0;
+  document.getElementById('phone-limit').value = 40;
   document.getElementById('phone-submit-btn').innerText = "Add Phone";
   document.getElementById('phone-cancel-btn').style.display = "none";
 }
@@ -354,20 +357,21 @@ async function savePhone() {
   const allowGroupChats = document.getElementById('phone-group-chats').checked;
   const isEnabled = document.getElementById('phone-is-enabled').checked;
   const responseDelay = parseInt(document.getElementById('phone-delay').value) || 0;
+  const maxDailyMessages = parseInt(document.getElementById('phone-limit').value) || 40;
   if (!number) return alert("Phone number is required");
 
   if (editingPhoneId) {
     await fetch(`/api/phones/${editingPhoneId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay })
+      body: JSON.stringify({ number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay, maxDailyMessages })
     });
     cancelPhoneEdit();
   } else {
     const res = await fetch('/api/phones', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay })
+      body: JSON.stringify({ number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay, maxDailyMessages })
     });
     if (!res.ok) {
       const err = await res.json();

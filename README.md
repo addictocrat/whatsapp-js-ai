@@ -58,6 +58,7 @@ System Instructions, Scheduled Tasks (Cron Jobs), Phone Numbers, and Memory Cont
   - **Configurations**: For each number, you can:
     - Enable or disable AI responses entirely.
     - Set a custom response delay (in seconds) before the AI replies.
+    - Set a max daily message limit (default is 40) to limit API credit consumption and prevent spam.
     - Map a custom AI model (e.g. `meta-llama/llama-3-70b-instruct`) and unique Instruction profile.
     - Toggle whether the bot should respond to messages from this number in Group Chats.
 - **Targeted Broadcasts**: When adding or editing Cron Tasks or YouTube Tracker channels, you can specify an optional list of target phone numbers (comma-separated). When set, execution notifications or video summaries will only be sent to those specified numbers rather than all registered phone numbers.

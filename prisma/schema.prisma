@@ -55,6 +55,7 @@ model PhoneNumber {
   allowGroupChats Boolean      @default(false)
   isEnabled       Boolean      @default(true)
   responseDelay   Int          @default(0)
+  maxDailyMessages Int         @default(40)
 }
 
 model Settings {

@@ -207,7 +207,7 @@ app.get('/api/phones', async (req, res) => {
 });
 
 app.post('/api/phones', async (req, res) => {
-  const { number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay } = req.body;
+  const { number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay, maxDailyMessages } = req.body;
   try {
     const newPhone = await prisma.phoneNumber.create({
       data: {
@@ -216,7 +216,8 @@ app.post('/api/phones', async (req, res) => {
         instructionId: instructionId ? parseInt(instructionId) : null,
         allowGroupChats: !!allowGroupChats,
         isEnabled: isEnabled !== undefined ? !!isEnabled : true,
-        responseDelay: responseDelay ? parseInt(responseDelay) : 0
+        responseDelay: responseDelay ? parseInt(responseDelay) : 0,
+        maxDailyMessages: maxDailyMessages !== undefined ? parseInt(maxDailyMessages) : 40
       }
     });
     res.json(newPhone);
@@ -227,7 +228,7 @@ app.post('/api/phones', async (req, res) => {
 
 app.put('/api/phones/:id', async (req, res) => {
   const { id } = req.params;
-  const { number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay } = req.body;
+  const { number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay, maxDailyMessages } = req.body;
   
   const data = {};
   if (number !== undefined) data.number = number;
@@ -236,6 +237,7 @@ app.put('/api/phones/:id', async (req, res) => {
   if (allowGroupChats !== undefined) data.allowGroupChats = !!allowGroupChats;
   if (isEnabled !== undefined) data.isEnabled = !!isEnabled;
   if (responseDelay !== undefined) data.responseDelay = parseInt(responseDelay) || 0;
+  if (maxDailyMessages !== undefined) data.maxDailyMessages = parseInt(maxDailyMessages) || 40;
 
   try {
     const updated = await prisma.phoneNumber.update({

@@ -214,6 +214,24 @@ client.on('message', async (msg) => {
     return;
   }
 
+  // Enforce daily message limit
+  const dateStrForLimit = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  const limitChats = await prisma.dailyChat.findMany({
+    where: { date: dateStrForLimit, senderPhone: resolvedPhone },
+    include: { messages: true }
+  });
+
+  let botMessagesCount = 0;
+  if (limitChats.length > 0) {
+    botMessagesCount = limitChats[0].messages.filter(m => m.sender === 'bot').length;
+  }
+
+  const dailyLimit = dbPhoneSettings ? dbPhoneSettings.maxDailyMessages : 40;
+  if (botMessagesCount >= dailyLimit) {
+    console.log(`⚠️ Daily message limit reached for ${resolvedPhone} (${botMessagesCount}/${dailyLimit}). Ignoring message.`);
+    return;
+  }
+
   console.log(`🚀 Processing authorized message from ${msg.from}...`);
 
   try {

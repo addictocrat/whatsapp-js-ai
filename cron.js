@@ -30,7 +30,7 @@ export async function setupCronJobs(client, openai, prisma) {
         const delay = new Date(task.executeAt).getTime() - Date.now();
         await cronQueue.add(
           task.name,
-          { prompt: task.prompt, isOneTimeId: task.id, modelName: task.modelName },
+          { prompt: task.prompt, isOneTimeId: task.id, modelName: task.modelName, targetPhones: task.targetPhones },
           { delay }
         );
         console.log(`⏰ One-time job '${task.name}' scheduled for ${task.executeAt} (delay: ${Math.round(delay/1000)}s).`);
@@ -38,7 +38,7 @@ export async function setupCronJobs(client, openai, prisma) {
     } else if (task.pattern) {
       await cronQueue.add(
         task.name,
-        { prompt: task.prompt, modelName: task.modelName },
+        { prompt: task.prompt, modelName: task.modelName, targetPhones: task.targetPhones },
         {
           repeat: {
             pattern: task.pattern,
@@ -78,17 +78,25 @@ export async function setupCronJobs(client, openai, prisma) {
 
       const reply = response.choices[0].message.content;
 
-      const envNumbers = (process.env.ALLOWED_PHONE_NUMBERS || '')
-        .split(',')
-        .map(num => num.trim())
-        .filter(num => num.length > 0);
-        
-      const dbPhones = await prisma.phoneNumber.findMany();
-      const dbNumbers = dbPhones.map(p => p.number.trim());
+      let targetNumbers = [];
+      if (job.data.targetPhones && job.data.targetPhones.trim().length > 0) {
+        targetNumbers = job.data.targetPhones
+          .split(',')
+          .map(num => num.trim())
+          .filter(num => num.length > 0);
+      } else {
+        const envNumbers = (process.env.ALLOWED_PHONE_NUMBERS || '')
+          .split(',')
+          .map(num => num.trim())
+          .filter(num => num.length > 0);
+          
+        const dbPhones = await prisma.phoneNumber.findMany();
+        const dbNumbers = dbPhones.map(p => p.number.trim());
 
-      const combinedNumbers = [...new Set([...envNumbers, ...dbNumbers])];
+        targetNumbers = [...new Set([...envNumbers, ...dbNumbers])];
+      }
 
-      for (const num of combinedNumbers) {
+      for (const num of targetNumbers) {
         const numberId = `${num}@c.us`;
         await client.sendMessage(numberId, reply);
         console.log(`✅ Message for '${job.name}' sent to ${numberId}`);
@@ -194,18 +202,26 @@ export async function setupCronJobs(client, openai, prisma) {
       const reply = response.choices[0].message.content;
 
       // Send message
-      const envNumbers = (process.env.ALLOWED_PHONE_NUMBERS || '')
-        .split(',')
-        .map(num => num.trim())
-        .filter(num => num.length > 0);
-        
-      const dbPhones = await prisma.phoneNumber.findMany();
-      const dbNumbers = dbPhones.map(p => p.number.trim());
-      const combinedNumbers = [...new Set([...envNumbers, ...dbNumbers])];
+      let targetNumbers = [];
+      if (channel.targetPhones && channel.targetPhones.trim().length > 0) {
+        targetNumbers = channel.targetPhones
+          .split(',')
+          .map(num => num.trim())
+          .filter(num => num.length > 0);
+      } else {
+        const envNumbers = (process.env.ALLOWED_PHONE_NUMBERS || '')
+          .split(',')
+          .map(num => num.trim())
+          .filter(num => num.length > 0);
+          
+        const dbPhones = await prisma.phoneNumber.findMany();
+        const dbNumbers = dbPhones.map(p => p.number.trim());
+        targetNumbers = [...new Set([...envNumbers, ...dbNumbers])];
+      }
 
       const prefix = `📺 *New Video from ${channel.name}!*\nhttps://youtube.com/watch?v=${videoId}\n\n`;
 
-      for (const num of combinedNumbers) {
+      for (const num of targetNumbers) {
         const numberId = `${num}@c.us`;
         await client.sendMessage(numberId, prefix + reply);
         console.log(`✅ YouTube summary for '${channel.name}' sent to ${numberId}`);

@@ -62,7 +62,10 @@ app.delete('/api/instructions/:id', async (req, res) => {
 // --- Daily Chats API ---
 
 app.get('/api/chats', async (req, res) => {
+  const { phone } = req.query;
+  const where = phone ? { senderPhone: phone } : {};
   const chats = await prisma.dailyChat.findMany({
+    where,
     include: { messages: true },
     orderBy: { date: 'desc' }
   });
@@ -78,7 +81,7 @@ app.get('/api/cron', async (req, res) => {
 });
 
 app.post('/api/cron', async (req, res) => {
-  const { name, pattern, timezone, prompt, isOneTime, executeAt, modelName } = req.body;
+  const { name, pattern, timezone, prompt, isOneTime, executeAt, modelName, targetPhones } = req.body;
   const newCron = await prisma.cronTask.create({
     data: { 
       name, 
@@ -86,6 +89,7 @@ app.post('/api/cron', async (req, res) => {
       timezone, 
       prompt, 
       modelName,
+      targetPhones,
       isOneTime: !!isOneTime, 
       executeAt: executeAt ? new Date(executeAt) : null,
       isActive: true 
@@ -108,7 +112,7 @@ app.get('/api/youtube', async (req, res) => {
 });
 
 app.post('/api/youtube', async (req, res) => {
-  const { channelId, name, checkIntervalHours, resumePrompt, modelName } = req.body;
+  const { channelId, name, checkIntervalHours, resumePrompt, modelName, targetPhones } = req.body;
   const newChannel = await prisma.youtubeChannel.create({
     data: { 
       channelId, 
@@ -116,6 +120,7 @@ app.post('/api/youtube', async (req, res) => {
       checkIntervalHours: parseInt(checkIntervalHours) || 1, 
       resumePrompt, 
       modelName,
+      targetPhones,
       isActive: true 
     }
   });
@@ -124,7 +129,7 @@ app.post('/api/youtube', async (req, res) => {
 
 app.put('/api/youtube/:id', async (req, res) => {
   const { id } = req.params;
-  const { channelId, name, checkIntervalHours, resumePrompt, modelName, isActive } = req.body;
+  const { channelId, name, checkIntervalHours, resumePrompt, modelName, isActive, targetPhones } = req.body;
   
   const data = {};
   if (channelId !== undefined) data.channelId = channelId;
@@ -133,6 +138,7 @@ app.put('/api/youtube/:id', async (req, res) => {
   if (resumePrompt !== undefined) data.resumePrompt = resumePrompt;
   if (modelName !== undefined) data.modelName = modelName;
   if (isActive !== undefined) data.isActive = isActive;
+  if (targetPhones !== undefined) data.targetPhones = targetPhones;
 
   const updated = await prisma.youtubeChannel.update({
     where: { id: parseInt(id) },

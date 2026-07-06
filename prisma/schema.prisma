@@ -34,15 +34,16 @@ model Message {
 }
 
 model CronTask {
-  id        Int       @id @default(autoincrement())
-  name      String
-  pattern   String?
-  executeAt DateTime?
-  isOneTime Boolean   @default(false)
-  timezone  String    @default("Europe/Istanbul")
-  prompt    String
-  modelName String?
-  isActive  Boolean   @default(true)
+  id           Int       @id @default(autoincrement())
+  name         String
+  pattern      String?
+  executeAt    DateTime?
+  isOneTime    Boolean   @default(false)
+  timezone     String    @default("Europe/Istanbul")
+  prompt       String
+  modelName    String?
+  targetPhones String?
+  isActive     Boolean   @default(true)
 }
 
 model PhoneNumber {
@@ -69,5 +70,6 @@ model YoutubeChannel {
   resumePrompt       String
   lastVideoId        String?
   modelName          String?
+  targetPhones       String?
   isActive           Boolean  @default(true)
 }

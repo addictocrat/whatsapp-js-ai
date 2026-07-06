@@ -3,7 +3,6 @@ function showSection(id) {
   document.querySelectorAll('section').forEach(sec => sec.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if (id === 'instructions') loadInstructions();
-  if (id === 'chats') loadChats();
   if (id === 'cron') loadCronTasks();
   if (id === 'phones') loadPhones();
   if (id === 'youtube') loadYoutubeChannels();
@@ -144,37 +143,63 @@ async function deleteInstruction(id) {
   loadInstructions();
 }
 
-// --- Chats ---
-async function loadChats() {
-  const res = await fetch('/api/chats');
-  const data = await res.json();
-  const container = document.getElementById('chats-container');
-  container.innerHTML = '';
-  
-  data.forEach(chat => {
-    const chatDiv = document.createElement('div');
-    chatDiv.className = 'chat-log';
-    
-    const header = document.createElement('div');
-    header.className = 'chat-header';
-    header.innerText = `Chat ID: ${chat.id} | Date: ${chat.date} | Phone: ${chat.senderPhone}`;
-    
-    const msgContainer = document.createElement('div');
-    msgContainer.className = 'chat-messages';
-    
-    chat.messages.forEach(msg => {
-      const p = document.createElement('div');
-      p.className = 'msg';
-      const time = new Date(msg.timestamp).toLocaleTimeString();
-      p.innerHTML = `[${time}] <strong>${msg.sender}</strong>: ${msg.body}`;
-      msgContainer.appendChild(p);
+// --- Chat History Modal ---
+async function showChatHistory(phoneNumber) {
+  document.getElementById('history-modal-title').innerText = `Chat History for ${phoneNumber}`;
+  const container = document.getElementById('history-modal-chats');
+  container.innerHTML = '<p>Loading history...</p>';
+  document.getElementById('history-modal').style.display = 'block';
+
+  try {
+    const res = await fetch(`/api/chats?phone=${encodeURIComponent(phoneNumber)}`);
+    const data = await res.json();
+    container.innerHTML = '';
+
+    if (data.length === 0) {
+      container.innerHTML = '<p style="padding: 10px;">No chat history found for this phone number.</p>';
+      return;
+    }
+
+    data.forEach(chat => {
+      const chatDiv = document.createElement('div');
+      chatDiv.className = 'chat-log';
+      
+      const header = document.createElement('div');
+      header.className = 'chat-header';
+      header.innerText = `Date: ${chat.date}`;
+      
+      const msgContainer = document.createElement('div');
+      msgContainer.className = 'chat-messages';
+      
+      chat.messages.forEach(msg => {
+        const p = document.createElement('div');
+        p.className = 'msg';
+        const time = new Date(msg.timestamp).toLocaleTimeString();
+        p.innerHTML = `[${time}] <strong>${msg.sender.toUpperCase()}</strong>: ${msg.body}`;
+        msgContainer.appendChild(p);
+      });
+      
+      chatDiv.appendChild(header);
+      chatDiv.appendChild(msgContainer);
+      container.appendChild(chatDiv);
     });
-    
-    chatDiv.appendChild(header);
-    chatDiv.appendChild(msgContainer);
-    container.appendChild(chatDiv);
-  });
+  } catch (err) {
+    container.innerHTML = '<p style="padding: 10px; color: red;">Error loading chat history.</p>';
+    console.error(err);
+  }
 }
+
+function closeHistoryModal() {
+  document.getElementById('history-modal').style.display = 'none';
+}
+
+// Close modal when clicking outside of it
+window.addEventListener('click', (event) => {
+  const modal = document.getElementById('history-modal');
+  if (event.target === modal) {
+    closeHistoryModal();
+  }
+});
 
 // --- Cron Tasks ---
 function toggleScheduleInputs() {
@@ -200,6 +225,7 @@ async function loadCronTasks() {
       <td>${scheduleStr}</td>
       <td>${task.timezone}</td>
       <td>${task.modelName || '<em>Default</em>'}</td>
+      <td>${task.targetPhones || '<em>All Allowed</em>'}</td>
       <td><pre style="margin:0; max-height:60px; overflow:auto; white-space: pre-wrap;">${task.prompt}</pre></td>
       <td><button class="danger" onclick="deleteCronTask(${task.id})">Delete</button></td>
     `;
@@ -213,6 +239,7 @@ async function addCronTask() {
   const timezone = document.getElementById('cron-tz').value;
   const prompt = document.getElementById('cron-prompt').value;
   const modelName = document.getElementById('cron-model').value || null;
+  const targetPhones = document.getElementById('cron-target-phones').value || null;
   if (!name || !prompt) return alert("Fill required fields");
 
   let isOneTime = false;
@@ -243,11 +270,12 @@ async function addCronTask() {
   await fetch('/api/cron', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, pattern, timezone, prompt, isOneTime, executeAt, modelName })
+    body: JSON.stringify({ name, pattern, timezone, prompt, isOneTime, executeAt, modelName, targetPhones })
   });
   
   document.getElementById('cron-name').value = '';
   document.getElementById('cron-model').value = '';
+  document.getElementById('cron-target-phones').value = '';
   document.getElementById('cron-prompt').value = '';
   // reset interval fields
   document.getElementById('cron-interval-val').value = '';
@@ -280,6 +308,7 @@ async function loadPhones() {
       <td>${phone.instruction ? phone.instruction.name : '<em>Default Setup</em>'}</td>
       <td>${phone.allowGroupChats ? '✅ Yes' : '❌ No'}</td>
       <td>
+        <button onclick="showChatHistory('${phone.number}')">HISTORY</button>
         <button onclick="editPhone(${phone.id})">Edit</button>
         <button class="danger" onclick="deletePhone(${phone.id})">Delete</button>
       </td>
@@ -372,6 +401,7 @@ async function loadYoutubeChannels() {
       <td>${channel.channelId}</td>
       <td>${channel.checkIntervalHours}</td>
       <td>${channel.modelName || '<em>Default</em>'}</td>
+      <td>${channel.targetPhones || '<em>All Allowed</em>'}</td>
       <td><pre style="margin:0; max-height:60px; overflow:auto; white-space: pre-wrap;">${channel.resumePrompt}</pre></td>
       <td>
         <button onclick="editYoutubeChannel(${channel.id})">Edit</button>
@@ -392,6 +422,7 @@ function editYoutubeChannel(id) {
   document.getElementById('yt-name').value = channel.name;
   document.getElementById('yt-interval').value = channel.checkIntervalHours;
   document.getElementById('yt-model').value = channel.modelName || '';
+  document.getElementById('yt-target-phones').value = channel.targetPhones || '';
   document.getElementById('yt-prompt').value = channel.resumePrompt;
   document.getElementById('yt-submit-btn').innerText = "Update Channel";
   document.getElementById('yt-cancel-btn').style.display = "inline-block";
@@ -405,6 +436,7 @@ function cancelYoutubeEdit() {
   document.getElementById('yt-name').value = '';
   document.getElementById('yt-interval').value = '';
   document.getElementById('yt-model').value = '';
+  document.getElementById('yt-target-phones').value = '';
   document.getElementById('yt-prompt').value = '';
   document.getElementById('yt-submit-btn').innerText = "Add Channel";
   document.getElementById('yt-cancel-btn').style.display = "none";
@@ -415,6 +447,7 @@ async function saveYoutubeChannel() {
   const name = document.getElementById('yt-name').value;
   const checkIntervalHours = document.getElementById('yt-interval').value;
   const modelName = document.getElementById('yt-model').value || null;
+  const targetPhones = document.getElementById('yt-target-phones').value || null;
   const resumePrompt = document.getElementById('yt-prompt').value;
   
   if (!channelId || !name || !checkIntervalHours || !resumePrompt) {
@@ -425,14 +458,14 @@ async function saveYoutubeChannel() {
     await fetch(`/api/youtube/${editingYtId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channelId, name, checkIntervalHours, modelName, resumePrompt })
+      body: JSON.stringify({ channelId, name, checkIntervalHours, modelName, targetPhones, resumePrompt })
     });
     cancelYoutubeEdit();
   } else {
     await fetch('/api/youtube', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channelId, name, checkIntervalHours, modelName, resumePrompt })
+      body: JSON.stringify({ channelId, name, checkIntervalHours, modelName, targetPhones, resumePrompt })
     });
     cancelYoutubeEdit();
   }

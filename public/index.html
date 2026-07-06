@@ -11,10 +11,9 @@
     <h2>AI Config</h2>
     <ul>
       <li><a href="#" onclick="showSection('instructions')">Instructions</a></li>
-      <li><a href="#" onclick="showSection('chats')">Daily Chats</a></li>
       <li><a href="#" onclick="showSection('cron')">Cron Tasks</a></li>
       <li><a href="#" onclick="showSection('youtube')">YouTube Tracker</a></li>
-      <li><a href="#" onclick="showSection('phones')">Allowed Phones</a></li>
+      <li><a href="#" onclick="showSection('phones')">Phone Numbers</a></li>
       <li><a href="#" onclick="showSection('settings')">Settings</a></li>
     </ul>
   </div>
@@ -65,11 +64,7 @@
       </table>
     </section>
 
-    <!-- Chats Section -->
-    <section id="chats">
-      <h2>Daily Chat Logs</h2>
-      <div id="chats-container"></div>
-    </section>
+
 
     <!-- Cron Section -->
     <section id="cron">
@@ -108,6 +103,7 @@
         </div>
 
         <input type="text" id="cron-tz" placeholder="Timezone" value="Europe/Istanbul" style="margin-top: 10px;">
+        <input type="text" id="cron-target-phones" placeholder="Target Phone Numbers (e.g. 905418956600,905348951230) (Optional)" style="margin-top: 10px;">
         <textarea id="cron-prompt" placeholder="Prompt for the AI to execute..."></textarea>
         <button onclick="addCronTask()">Add Task</button>
       </div>
@@ -118,6 +114,7 @@
             <th>Pattern</th>
             <th>Timezone</th>
             <th>Model</th>
+            <th>Target Phones</th>
             <th>Prompt</th>
             <th>Actions</th>
           </tr>
@@ -136,6 +133,7 @@
         <input type="text" id="yt-name" placeholder="Channel Name">
         <input type="number" id="yt-interval" placeholder="Check Interval (hours)" min="1">
         <input type="text" id="yt-model" placeholder="Model Name (Optional)">
+        <input type="text" id="yt-target-phones" placeholder="Target Phone Numbers (e.g. 905418956600,905348951230) (Optional)">
         <textarea id="yt-prompt" placeholder="Resume Prompt (e.g. Summarize this video...)"></textarea>
         <button id="yt-submit-btn" onclick="saveYoutubeChannel()">Add Channel</button>
         <button id="yt-cancel-btn" style="display:none;" class="danger" onclick="cancelYoutubeEdit()">Cancel</button>
@@ -147,6 +145,7 @@
             <th>Channel ID</th>
             <th>Interval (h)</th>
             <th>Model</th>
+            <th>Target Phones</th>
             <th>Prompt</th>
             <th>Actions</th>
           </tr>
@@ -157,7 +156,7 @@
 
     <!-- Phones Section -->
     <section id="phones">
-      <h2>Allowed Phones</h2>
+      <h2>Phone Numbers</h2>
       <div class="card">
         <h3 id="phone-form-title">Add New Phone</h3>
         <input type="hidden" id="phone-id">
@@ -196,6 +195,15 @@
         <tbody></tbody>
       </table>
     </section>
+  </div>
+
+  <!-- Chat History Modal -->
+  <div id="history-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeHistoryModal()">&times;</span>
+      <h2 id="history-modal-title">Chat History</h2>
+      <div id="history-modal-chats"></div>
+    </div>
   </div>
 
   <script src="app.js"></script>

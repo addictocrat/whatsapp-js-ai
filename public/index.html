@@ -13,6 +13,7 @@
       <li><a href="#" onclick="showSection('instructions')">Instructions</a></li>
       <li><a href="#" onclick="showSection('chats')">Daily Chats</a></li>
       <li><a href="#" onclick="showSection('cron')">Cron Tasks</a></li>
+      <li><a href="#" onclick="showSection('phones')">Allowed Phones</a></li>
       <li><a href="#" onclick="showSection('settings')">Settings</a></li>
     </ul>
   </div>
@@ -44,6 +45,7 @@
         <h3 id="inst-form-title">Add New Instruction</h3>
         <input type="hidden" id="inst-id">
         <input type="text" id="inst-name" placeholder="Instruction Name">
+        <input type="text" id="inst-model" placeholder="Model Name (Optional)">
         <textarea id="inst-content" placeholder="System prompt..."></textarea>
         <button id="inst-submit-btn" onclick="saveInstruction()">Add</button>
         <button id="inst-cancel-btn" style="display:none;" class="danger" onclick="cancelInstructionEdit()">Cancel</button>
@@ -53,6 +55,7 @@
           <tr>
             <th>Active</th>
             <th>Name</th>
+            <th>Model</th>
             <th>Content</th>
             <th>Actions</th>
           </tr>
@@ -73,6 +76,7 @@
       <div class="card">
         <h3>Add New Task</h3>
         <input type="text" id="cron-name" placeholder="Task Name">
+        <input type="text" id="cron-model" placeholder="Model Name (Optional)">
         
         <label for="cron-type">Schedule Type:</label>
         <select id="cron-type" onchange="toggleScheduleInputs()">
@@ -112,7 +116,50 @@
             <th>Name</th>
             <th>Pattern</th>
             <th>Timezone</th>
+            <th>Model</th>
             <th>Prompt</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Phones Section -->
+    <section id="phones">
+      <h2>Allowed Phones</h2>
+      <div class="card">
+        <h3 id="phone-form-title">Add New Phone</h3>
+        <input type="hidden" id="phone-id">
+        <input type="text" id="phone-number" placeholder="Phone Number (e.g. 1234567890)">
+        <input type="text" id="phone-model" placeholder="AI Model (Optional)">
+        <select id="phone-instruction">
+          <option value="">Default Instruction Setup</option>
+        </select>
+        <label style="display: flex; align-items: center; gap: 10px; margin-top: 10px; cursor: pointer; user-select: none;">
+          <input type="checkbox" id="phone-is-enabled" style="width: auto; margin-bottom: 0;" checked>
+          <span>Enable AI Responses</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 10px; margin-top: 10px; cursor: pointer; user-select: none;">
+          <input type="checkbox" id="phone-group-chats" style="width: auto; margin-bottom: 0;">
+          <span>Allow Group Chats</span>
+        </label>
+        <div style="margin-top: 10px;">
+          <label for="phone-delay">Response Delay (seconds):</label>
+          <input type="number" id="phone-delay" value="0" min="0" style="width: 80px; margin-bottom: 0; margin-left: 10px;">
+        </div>
+        <button id="phone-submit-btn" onclick="savePhone()" style="margin-top: 15px;">Add Phone</button>
+        <button id="phone-cancel-btn" style="display:none;" class="danger" onclick="cancelPhoneEdit()">Cancel</button>
+      </div>
+      <table id="phones-table">
+        <thead>
+          <tr>
+            <th>Number</th>
+            <th>Enabled</th>
+            <th>Delay(s)</th>
+            <th>Model</th>
+            <th>Instruction Profile</th>
+            <th>Group Chats</th>
             <th>Actions</th>
           </tr>
         </thead>

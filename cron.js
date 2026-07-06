@@ -29,7 +29,7 @@ export async function setupCronJobs(client, openai, prisma) {
         const delay = new Date(task.executeAt).getTime() - Date.now();
         await cronQueue.add(
           task.name,
-          { prompt: task.prompt, isOneTimeId: task.id },
+          { prompt: task.prompt, isOneTimeId: task.id, modelName: task.modelName },
           { delay }
         );
         console.log(`⏰ One-time job '${task.name}' scheduled for ${task.executeAt} (delay: ${Math.round(delay/1000)}s).`);
@@ -37,7 +37,7 @@ export async function setupCronJobs(client, openai, prisma) {
     } else if (task.pattern) {
       await cronQueue.add(
         task.name,
-        { prompt: task.prompt },
+        { prompt: task.prompt, modelName: task.modelName },
         {
           repeat: {
             pattern: task.pattern,
@@ -66,8 +66,9 @@ export async function setupCronJobs(client, openai, prisma) {
     }
 
     try {
+      const modelToUse = job.data.modelName || process.env.MODEL_NAME || "google/gemini-3.1-flash-lite";
       const response = await openai.chat.completions.create({
-        model: process.env.MODEL_NAME || "google/gemini-3.1-flash-lite",
+        model: modelToUse,
         messages: [
           { role: "system", content: "You are an AI assistant executing a scheduled background task." },
           { role: "user", content: job.data.prompt }
@@ -76,15 +77,20 @@ export async function setupCronJobs(client, openai, prisma) {
 
       const reply = response.choices[0].message.content;
 
-      const allowedNumbers = (process.env.ALLOWED_PHONE_NUMBERS || '')
+      const envNumbers = (process.env.ALLOWED_PHONE_NUMBERS || '')
         .split(',')
-        .map(num => `${num.trim()}@c.us`);
+        .map(num => num.trim())
+        .filter(num => num.length > 0);
+        
+      const dbPhones = await prisma.phoneNumber.findMany();
+      const dbNumbers = dbPhones.map(p => p.number.trim());
 
-      for (const numberId of allowedNumbers) {
-        if (numberId.trim() !== '@c.us') {
-          await client.sendMessage(numberId, reply);
-          console.log(`✅ Message for '${job.name}' sent to ${numberId}`);
-        }
+      const combinedNumbers = [...new Set([...envNumbers, ...dbNumbers])];
+
+      for (const num of combinedNumbers) {
+        const numberId = `${num}@c.us`;
+        await client.sendMessage(numberId, reply);
+        console.log(`✅ Message for '${job.name}' sent to ${numberId}`);
       }
     } catch (error) {
       console.error(`❌ Failed to run cron job '${job.name}':`, error);

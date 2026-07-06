@@ -5,6 +5,7 @@ function showSection(id) {
   if (id === 'instructions') loadInstructions();
   if (id === 'chats') loadChats();
   if (id === 'cron') loadCronTasks();
+  if (id === 'phones') loadPhones();
   if (id === 'settings') loadSettings();
 }
 
@@ -43,11 +44,25 @@ async function loadInstructions() {
   instructionsList = data;
   const tbody = document.querySelector('#instructions-table tbody');
   tbody.innerHTML = '';
+  
+  // Also populate the phone instructions dropdown
+  const phoneInstSelect = document.getElementById('phone-instruction');
+  if (phoneInstSelect) {
+    phoneInstSelect.innerHTML = '<option value="">Default Instruction Setup</option>';
+    data.forEach(inst => {
+      const opt = document.createElement('option');
+      opt.value = inst.id;
+      opt.innerText = inst.name;
+      phoneInstSelect.appendChild(opt);
+    });
+  }
+
   data.forEach(inst => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><input type="radio" name="activeInst" ${inst.isActive ? 'checked' : ''} onchange="setActiveInstruction(${inst.id})"></td>
       <td>${inst.name}</td>
+      <td>${inst.modelName || '<em>Default</em>'}</td>
       <td><pre style="margin:0; max-height: 100px; overflow:auto; white-space: pre-wrap;">${inst.content}</pre></td>
       <td>
         <button onclick="editInstruction(${inst.id})">Edit</button>
@@ -65,6 +80,7 @@ function editInstruction(id) {
   document.getElementById('inst-form-title').innerText = "Edit Instruction";
   document.getElementById('inst-id').value = id;
   document.getElementById('inst-name').value = inst.name;
+  document.getElementById('inst-model').value = inst.modelName || '';
   document.getElementById('inst-content').value = inst.content;
   document.getElementById('inst-submit-btn').innerText = "Update";
   document.getElementById('inst-cancel-btn').style.display = "inline-block";
@@ -75,6 +91,7 @@ function cancelInstructionEdit() {
   document.getElementById('inst-form-title').innerText = "Add New Instruction";
   document.getElementById('inst-id').value = '';
   document.getElementById('inst-name').value = '';
+  document.getElementById('inst-model').value = '';
   document.getElementById('inst-content').value = '';
   document.getElementById('inst-submit-btn').innerText = "Add";
   document.getElementById('inst-cancel-btn').style.display = "none";
@@ -83,22 +100,24 @@ function cancelInstructionEdit() {
 async function saveInstruction() {
   const name = document.getElementById('inst-name').value;
   const content = document.getElementById('inst-content').value;
+  const modelName = document.getElementById('inst-model').value || null;
   if (!name || !content) return alert("Fill all fields");
 
   if (editingInstId) {
     await fetch(`/api/instructions/${editingInstId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, content })
+      body: JSON.stringify({ name, content, modelName })
     });
     cancelInstructionEdit();
   } else {
     await fetch('/api/instructions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, content })
+      body: JSON.stringify({ name, content, modelName })
     });
     document.getElementById('inst-name').value = '';
+    document.getElementById('inst-model').value = '';
     document.getElementById('inst-content').value = '';
   }
   loadInstructions();
@@ -179,6 +198,7 @@ async function loadCronTasks() {
       <td>${task.name}</td>
       <td>${scheduleStr}</td>
       <td>${task.timezone}</td>
+      <td>${task.modelName || '<em>Default</em>'}</td>
       <td><pre style="margin:0; max-height:60px; overflow:auto; white-space: pre-wrap;">${task.prompt}</pre></td>
       <td><button class="danger" onclick="deleteCronTask(${task.id})">Delete</button></td>
     `;
@@ -191,6 +211,7 @@ async function addCronTask() {
   const type = document.getElementById('cron-type').value;
   const timezone = document.getElementById('cron-tz').value;
   const prompt = document.getElementById('cron-prompt').value;
+  const modelName = document.getElementById('cron-model').value || null;
   if (!name || !prompt) return alert("Fill required fields");
 
   let isOneTime = false;
@@ -221,10 +242,11 @@ async function addCronTask() {
   await fetch('/api/cron', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, pattern, timezone, prompt, isOneTime, executeAt })
+    body: JSON.stringify({ name, pattern, timezone, prompt, isOneTime, executeAt, modelName })
   });
   
   document.getElementById('cron-name').value = '';
+  document.getElementById('cron-model').value = '';
   document.getElementById('cron-prompt').value = '';
   // reset interval fields
   document.getElementById('cron-interval-val').value = '';
@@ -235,6 +257,101 @@ async function deleteCronTask(id) {
   if (!confirm("Delete this cron task?")) return;
   await fetch(`/api/cron/${id}`, { method: 'DELETE' });
   loadCronTasks();
+}
+
+// --- Phones ---
+let editingPhoneId = null;
+let phonesList = [];
+
+async function loadPhones() {
+  const res = await fetch('/api/phones');
+  const data = await res.json();
+  phonesList = data;
+  const tbody = document.querySelector('#phones-table tbody');
+  tbody.innerHTML = '';
+  data.forEach(phone => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${phone.number}</td>
+      <td>${phone.isEnabled ? '✅' : '❌'}</td>
+      <td>${phone.responseDelay}s</td>
+      <td>${phone.modelName || '<em>Default</em>'}</td>
+      <td>${phone.instruction ? phone.instruction.name : '<em>Default Setup</em>'}</td>
+      <td>${phone.allowGroupChats ? '✅ Yes' : '❌ No'}</td>
+      <td>
+        <button onclick="editPhone(${phone.id})">Edit</button>
+        <button class="danger" onclick="deletePhone(${phone.id})">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function editPhone(id) {
+  const phone = phonesList.find(p => p.id === id);
+  if (!phone) return;
+  editingPhoneId = id;
+  document.getElementById('phone-form-title').innerText = "Edit Phone";
+  document.getElementById('phone-id').value = id;
+  document.getElementById('phone-number').value = phone.number;
+  document.getElementById('phone-model').value = phone.modelName || '';
+  document.getElementById('phone-instruction').value = phone.instructionId || '';
+  document.getElementById('phone-group-chats').checked = phone.allowGroupChats;
+  document.getElementById('phone-is-enabled').checked = phone.isEnabled !== false;
+  document.getElementById('phone-delay').value = phone.responseDelay || 0;
+  document.getElementById('phone-submit-btn').innerText = "Update Phone";
+  document.getElementById('phone-cancel-btn').style.display = "inline-block";
+}
+
+function cancelPhoneEdit() {
+  editingPhoneId = null;
+  document.getElementById('phone-form-title').innerText = "Add New Phone";
+  document.getElementById('phone-id').value = '';
+  document.getElementById('phone-number').value = '';
+  document.getElementById('phone-model').value = '';
+  document.getElementById('phone-instruction').value = '';
+  document.getElementById('phone-group-chats').checked = false;
+  document.getElementById('phone-is-enabled').checked = true;
+  document.getElementById('phone-delay').value = 0;
+  document.getElementById('phone-submit-btn').innerText = "Add Phone";
+  document.getElementById('phone-cancel-btn').style.display = "none";
+}
+
+async function savePhone() {
+  const number = document.getElementById('phone-number').value;
+  const modelName = document.getElementById('phone-model').value || null;
+  const instructionId = document.getElementById('phone-instruction').value || null;
+  const allowGroupChats = document.getElementById('phone-group-chats').checked;
+  const isEnabled = document.getElementById('phone-is-enabled').checked;
+  const responseDelay = parseInt(document.getElementById('phone-delay').value) || 0;
+  if (!number) return alert("Phone number is required");
+
+  if (editingPhoneId) {
+    await fetch(`/api/phones/${editingPhoneId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay })
+    });
+    cancelPhoneEdit();
+  } else {
+    const res = await fetch('/api/phones', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      return alert(err.error || 'Error saving phone');
+    }
+    cancelPhoneEdit();
+  }
+  loadPhones();
+}
+
+async function deletePhone(id) {
+  if (!confirm("Delete this phone number?")) return;
+  await fetch(`/api/phones/${id}`, { method: 'DELETE' });
+  loadPhones();
 }
 
 // Init

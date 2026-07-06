@@ -154,23 +154,51 @@ client.on('message', async (msg) => {
 
   // Find the exact phone number matched
   let matchedPhone = null;
+  let dbPhoneSettings = null;
 
-  const isAllowed = allowedInputs.some(input => {
-    if (
+  const dbPhones = await prisma.phoneNumber.findMany({ include: { instruction: true } });
+
+  const checkInput = (input) => {
+    return (
       fromRaw === input || fromRaw === `${input}@c.us` || fromRaw === `${input}@lid` ||
       fromUser === input || authorRaw === input || authorRaw === `${input}@c.us` ||
       authorUser === input || (contactNumber && contactNumber === input) ||
       (contactUser && contactUser === input) || (hiddenPn && hiddenPn === input)
-    ) {
-      matchedPhone = input;
-      return true;
-    }
-    return false;
-  });
+    );
+  };
 
-  if (!isAllowed) {
-    console.log(`⚠️ Ignored message from unauthorized sender: ${msg.from}`);
-    return;
+  const matchedDbPhone = dbPhones.find(p => checkInput(p.number.toLowerCase()));
+
+  if (matchedDbPhone) {
+    matchedPhone = matchedDbPhone.number;
+    dbPhoneSettings = matchedDbPhone;
+
+    if (dbPhoneSettings.isEnabled === false) {
+      console.log(`⚠️ Ignored message from ${msg.from} because AI responses are explicitly disabled for this number.`);
+      return;
+    }
+  } else {
+    const isAllowedEnv = allowedInputs.some(input => {
+      if (checkInput(input)) {
+        matchedPhone = input;
+        return true;
+      }
+      return false;
+    });
+
+    if (!isAllowedEnv) {
+      console.log(`⚠️ Ignored message from unauthorized sender: ${msg.from}`);
+      return;
+    }
+  }
+
+  // Group chat logic
+  const isGroup = msg.from.endsWith('@g.us');
+  if (isGroup) {
+    if (!dbPhoneSettings || !dbPhoneSettings.allowGroupChats) {
+      console.log(`⚠️ Ignored group message from ${msg.from} because allowGroupChats is false or not explicitly allowed in DB.`);
+      return;
+    }
   }
   
   // Use matchedPhone as the clean phone number identifier, fallback to fromUser
@@ -189,17 +217,33 @@ client.on('message', async (msg) => {
   console.log(`🚀 Processing authorized message from ${msg.from}...`);
 
   try {
-    // Read the instruction from Database
-    const activeInst = await prisma.instruction.findFirst({ where: { isActive: true } });
-    
     let systemPrompt = "You are a helpful AI assistant.";
-    if (activeInst) {
-      systemPrompt = activeInst.content;
-    } else {
-      // Fallback if no instructions are in DB yet
-      if (fs.existsSync('./INSTRUCTIONS.md')) {
-         systemPrompt = fs.readFileSync('./INSTRUCTIONS.md', 'utf-8');
+    let modelName = process.env.MODEL_NAME || "google/gemini-3.1-flash-lite";
+
+    const fetchDefaultInstruction = async () => {
+      const activeInst = await prisma.instruction.findFirst({ where: { isActive: true } });
+      if (activeInst) {
+        systemPrompt = activeInst.content;
+        if (activeInst.modelName) modelName = activeInst.modelName;
+      } else if (fs.existsSync('./INSTRUCTIONS.md')) {
+        systemPrompt = fs.readFileSync('./INSTRUCTIONS.md', 'utf-8');
       }
+    };
+
+    if (dbPhoneSettings) {
+      if (dbPhoneSettings.instruction) {
+        systemPrompt = dbPhoneSettings.instruction.content;
+        if (dbPhoneSettings.instruction.modelName) {
+           modelName = dbPhoneSettings.instruction.modelName;
+        }
+      } else {
+        await fetchDefaultInstruction();
+      }
+      if (dbPhoneSettings.modelName) {
+        modelName = dbPhoneSettings.modelName;
+      }
+    } else {
+       await fetchDefaultInstruction();
     }
 
     // Fetch context count
@@ -241,12 +285,25 @@ client.on('message', async (msg) => {
     }
 
     const response = await openai.chat.completions.create({
-      model: process.env.MODEL_NAME || "google/gemini-3.1-flash-lite",
+      model: modelName,
       messages: messagesPayload
     });
 
     const reply = response.choices[0].message.content;
-    msg.reply(reply);
+
+    let delayMs = 0;
+    if (dbPhoneSettings && dbPhoneSettings.responseDelay > 0) {
+      delayMs = dbPhoneSettings.responseDelay * 1000;
+    }
+
+    if (delayMs > 0) {
+      console.log(`⏳ Delaying response to ${msg.from} by ${dbPhoneSettings.responseDelay} seconds...`);
+      setTimeout(() => {
+        msg.reply(reply);
+      }, delayMs);
+    } else {
+      msg.reply(reply);
+    }
     // (The reply will be saved to DB via the 'message_create' handler)
   } catch (error) {
     console.error("AI Error:", error);

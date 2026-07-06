@@ -11,7 +11,9 @@ model Instruction {
   id        Int      @id @default(autoincrement())
   name      String
   content   String
+  modelName String?
   isActive  Boolean  @default(false)
+  phoneNumbers PhoneNumber[]
 }
 
 model DailyChat {
@@ -39,7 +41,19 @@ model CronTask {
   isOneTime Boolean   @default(false)
   timezone  String    @default("Europe/Istanbul")
   prompt    String
+  modelName String?
   isActive  Boolean   @default(true)
+}
+
+model PhoneNumber {
+  id              Int          @id @default(autoincrement())
+  number          String       @unique
+  modelName       String?
+  instructionId   Int?
+  instruction     Instruction? @relation(fields: [instructionId], references: [id], onDelete: SetNull)
+  allowGroupChats Boolean      @default(false)
+  isEnabled       Boolean      @default(true)
+  responseDelay   Int          @default(0)
 }
 
 model Settings {

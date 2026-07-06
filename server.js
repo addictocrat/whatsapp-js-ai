@@ -22,20 +22,21 @@ app.get('/api/instructions', async (req, res) => {
 });
 
 app.post('/api/instructions', async (req, res) => {
-  const { name, content } = req.body;
+  const { name, content, modelName } = req.body;
   const newInst = await prisma.instruction.create({
-    data: { name, content, isActive: false }
+    data: { name, content, modelName, isActive: false }
   });
   res.json(newInst);
 });
 
 app.put('/api/instructions/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, content, isActive } = req.body;
+  const { name, content, modelName, isActive } = req.body;
 
   const data = {};
   if (name !== undefined) data.name = name;
   if (content !== undefined) data.content = content;
+  if (modelName !== undefined) data.modelName = modelName;
   if (isActive !== undefined) {
     data.isActive = isActive;
     if (isActive) {
@@ -77,13 +78,14 @@ app.get('/api/cron', async (req, res) => {
 });
 
 app.post('/api/cron', async (req, res) => {
-  const { name, pattern, timezone, prompt, isOneTime, executeAt } = req.body;
+  const { name, pattern, timezone, prompt, isOneTime, executeAt, modelName } = req.body;
   const newCron = await prisma.cronTask.create({
     data: { 
       name, 
       pattern, 
       timezone, 
       prompt, 
+      modelName,
       isOneTime: !!isOneTime, 
       executeAt: executeAt ? new Date(executeAt) : null,
       isActive: true 
@@ -139,6 +141,64 @@ app.post('/api/settings', async (req, res) => {
     });
   }
   res.json(settings);
+});
+
+// --- Phones API ---
+
+app.get('/api/phones', async (req, res) => {
+  const phones = await prisma.phoneNumber.findMany({ 
+    include: { instruction: true },
+    orderBy: { id: 'asc' } 
+  });
+  res.json(phones);
+});
+
+app.post('/api/phones', async (req, res) => {
+  const { number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay } = req.body;
+  try {
+    const newPhone = await prisma.phoneNumber.create({
+      data: {
+        number,
+        modelName,
+        instructionId: instructionId ? parseInt(instructionId) : null,
+        allowGroupChats: !!allowGroupChats,
+        isEnabled: isEnabled !== undefined ? !!isEnabled : true,
+        responseDelay: responseDelay ? parseInt(responseDelay) : 0
+      }
+    });
+    res.json(newPhone);
+  } catch (err) {
+    res.status(400).json({ error: "Could not create phone number. Ensure it's unique." });
+  }
+});
+
+app.put('/api/phones/:id', async (req, res) => {
+  const { id } = req.params;
+  const { number, modelName, instructionId, allowGroupChats, isEnabled, responseDelay } = req.body;
+  
+  const data = {};
+  if (number !== undefined) data.number = number;
+  if (modelName !== undefined) data.modelName = modelName;
+  if (instructionId !== undefined) data.instructionId = instructionId ? parseInt(instructionId) : null;
+  if (allowGroupChats !== undefined) data.allowGroupChats = !!allowGroupChats;
+  if (isEnabled !== undefined) data.isEnabled = !!isEnabled;
+  if (responseDelay !== undefined) data.responseDelay = parseInt(responseDelay) || 0;
+
+  try {
+    const updated = await prisma.phoneNumber.update({
+      where: { id: parseInt(id) },
+      data
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ error: "Could not update phone number." });
+  }
+});
+
+app.delete('/api/phones/:id', async (req, res) => {
+  const { id } = req.params;
+  await prisma.phoneNumber.delete({ where: { id: parseInt(id) } });
+  res.json({ success: true });
 });
 
 export function startServer(port = 3000) {

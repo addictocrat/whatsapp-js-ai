@@ -51,8 +51,14 @@ npm start
 
 ## Modifying Schedule, Instructions, & Memory Context
 
-System Instructions, Scheduled Tasks (Cron Jobs), and Memory Context (the count of previous message pairs fed to the AI) are managed dynamically via the Web GUI at `http://localhost:3000`.
+System Instructions, Scheduled Tasks (Cron Jobs), Allowed Phones, and Memory Context are managed dynamically via the Web GUI at `http://localhost:3000`.
 
+- **Allowed Phones Configuration**: You can manage allowed phone numbers directly via the Web GUI under the "Allowed Phones" tab. For each number, you can:
+  - Enable or disable AI responses entirely.
+  - Set a custom response delay (in seconds) before the AI replies.
+  - Map a custom AI model (e.g. `meta-llama/llama-3-70b-instruct`) and unique Instruction profile.
+  - Toggle whether the bot should respond to messages from this number in Group Chats.
+- **Granular AI Models**: You can explicitly set the AI model to use on a per-Instruction profile and per-Cron task basis directly from the Web GUI, bypassing the default `MODEL_NAME` fallback defined in the `.env` file.
 - **Context Config**: By default, the bot remembers the last 8 message pairs (16 total messages containing both user inputs and AI replies) in a conversation. You can change this count via the "Context Config" tab in the GUI to allow the AI to follow up and remember previous messages. Set it to `0` to disable history and have a fresh context for each message.
 
 ## Deploying on Coolify

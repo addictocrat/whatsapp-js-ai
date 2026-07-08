@@ -182,7 +182,19 @@ export async function checkYoutubeChannel(channelId, client, openai, prisma, for
     // Extract transcript
     let transcriptText = "";
     try {
-      const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+      const transcript = await YoutubeTranscript.fetchTranscript(videoId, {
+        fetch: (url, options) => {
+          const headers = { ...(options?.headers || {}) };
+          // Preserve the original User-Agent if the library set it (e.g. for Android InnerTube API)
+          if (!headers['User-Agent'] && !headers['user-agent']) {
+            headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36';
+          }
+          headers['Cookie'] = 'CONSENT=YES+cb.20210328-17-p0.en+FX+478';
+          headers['Accept-Language'] = 'en-US,en;q=0.9';
+          
+          return fetch(url, { ...options, headers });
+        }
+      });
       transcriptText = transcript.map(t => t.text).join(' ');
     } catch (err) {
       if (err.message.includes('Transcript is disabled') || err.message.includes('No transcripts')) {

@@ -144,13 +144,13 @@ export async function setupCronJobs(client, openai, prisma) {
  * @param {import('openai').OpenAI} openai 
  * @param {import('@prisma/client').PrismaClient} prisma
  */
-export async function checkYoutubeChannel(channelId, client, openai, prisma) {
+export async function checkYoutubeChannel(channelId, client, openai, prisma, force = false) {
   const channel = await prisma.youtubeChannel.findUnique({ where: { id: channelId } });
   if (!channel) {
     throw new Error(`Channel not found: ${channelId}`);
   }
 
-  console.log(`▶️ Checking YouTube channel '${channel.name}' for new videos...`);
+  console.log(`▶️ Checking YouTube channel '${channel.name}' for new videos (force: ${force})...`);
 
   try {
     const apiKey = process.env.YOUTUBE_API_KEY;
@@ -177,7 +177,7 @@ export async function checkYoutubeChannel(channelId, client, openai, prisma) {
 
     const videoId = latestVideo.id.videoId;
 
-    if (channel.lastVideoId === videoId) {
+    if (!force && channel.lastVideoId === videoId) {
       console.log(`ℹ️ No new videos for channel '${channel.name}'.`);
       return { newVideo: false, reason: "No new video (matches lastVideoId)" };
     }

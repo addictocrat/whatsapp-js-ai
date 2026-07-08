@@ -380,6 +380,7 @@ async function loadYoutubeChannels() {
       <td>
         <button onclick="editYoutubeChannel(${channel.id})">Edit</button>
         <button onclick="triggerYoutubeCheck(${channel.id}, this)">Trigger</button>
+        <button onclick="triggerLastVideo(${channel.id}, this)">Trigger Last Video</button>
         <button class="danger" onclick="deleteYoutubeChannel(${channel.id})">Delete</button>
       </td>
     `;
@@ -464,6 +465,29 @@ async function triggerYoutubeCheck(id, btn) {
       alert(`New video found!\nVideo ID: ${data.videoId}\nSummary sent to: ${data.targetNumbers.join(', ')}`);
     } else {
       alert(`No new video found. (${data.reason || 'up to date'})`);
+    }
+  } catch (err) {
+    alert("Error: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = originalText;
+  }
+}
+
+async function triggerLastVideo(id, btn) {
+  const originalText = btn.innerText;
+  btn.disabled = true;
+  btn.innerText = "Summarizing...";
+  try {
+    const res = await fetch(`/api/youtube/${id}/trigger-last`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to trigger last video check");
+    }
+    if (data.newVideo) {
+      alert(`Success!\nVideo ID: ${data.videoId}\nSummary sent to: ${data.targetNumbers.join(', ')}`);
+    } else {
+      alert(`Failed to send summary. (${data.reason || 'No video found'})`);
     }
   } catch (err) {
     alert("Error: " + err.message);

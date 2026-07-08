@@ -167,6 +167,20 @@ app.post('/api/youtube/:id/trigger', async (req, res) => {
   }
 });
 
+app.post('/api/youtube/:id/trigger-last', async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (!whatsappClient || !openaiClient) {
+      return res.status(500).json({ error: "WhatsApp client or OpenAI client is not initialized." });
+    }
+    const result = await checkYoutubeChannel(parseInt(id), whatsappClient, openaiClient, prisma, true);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error(`Error triggering YouTube last video check:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 
 // --- Phones API ---

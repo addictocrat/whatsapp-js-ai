@@ -63,6 +63,9 @@ System Instructions, Scheduled Tasks (Cron Jobs), Phone Numbers, and Memory Cont
     - Map a custom AI model (e.g. `meta-llama/llama-3-70b-instruct`) and unique Instruction profile.
     - Toggle whether the bot should respond to messages from this number in Group Chats.
 - **Targeted Broadcasts**: When adding or editing Cron Tasks or YouTube Tracker channels, you can specify an optional list of target phone numbers (comma-separated). When set, execution notifications or video summaries will only be sent to those specified numbers rather than all registered phone numbers.
+- **YouTube Tracker**: Automatically checks configured YouTube channels at set intervals for new videos.
+  - **Trigger**: Runs a standard check to see if a new video has been released.
+  - **Trigger Last Video**: Forces the assistant to fetch the latest video's subtitles (transcripts), summarize them using AI, and send the summary immediately to the target phone numbers, regardless of whether it has been processed before.
 
 
 ## Deploying on Coolify

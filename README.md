@@ -78,3 +78,9 @@ System Instructions, Scheduled Tasks (Cron Jobs), Phone Numbers, and Memory Cont
 6. **CRITICAL:** Go to the **Ports** tab and expose port `3000` so you can access the Web GUI from your domain.
 7. Click **Deploy**.
 8. Once deployed, click on the **Logs** tab in Coolify to find and scan the QR code for the first time.
+
+## INSTRUCTIONS FOR AI AGENTS
+
+DO NOT RUN ANY GIT COMMANDS
+DO NOT RUN ANY DB COMMANDS
+DO NOT RUN ANY DOCKER COMMANDS

@@ -153,29 +153,18 @@ export async function checkYoutubeChannel(channelId, client, openai, prisma, for
   console.log(`▶️ Checking YouTube channel '${channel.name}' for new videos (force: ${force})...`);
 
   try {
-    const apiKey = process.env.YOUTUBE_API_KEY;
-    if (!apiKey) {
-      console.error("❌ YOUTUBE_API_KEY is not set.");
-      throw new Error("YOUTUBE_API_KEY is not set.");
-    }
+    // Fetch latest video using RSS
+    const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channel.channelId}`;
+    const ytRes = await fetch(rssUrl);
+    const rssText = await ytRes.text();
 
-    // Fetch latest video
-    const url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channel.channelId}&part=snippet,id&order=date&maxResults=1`;
-    const ytRes = await fetch(url);
-    const ytData = await ytRes.json();
-
-    if (!ytData.items || ytData.items.length === 0) {
+    const videoIdMatch = rssText.match(/<yt:videoId>(.*?)<\/yt:videoId>/);
+    if (!videoIdMatch) {
       console.log(`ℹ️ No videos found for channel '${channel.name}'.`);
       return { newVideo: false, reason: "No videos found" };
     }
 
-    // We only care about videos
-    const latestVideo = ytData.items.find(item => item.id.kind === 'youtube#video');
-    if (!latestVideo) {
-      return { newVideo: false, reason: "No video items found" };
-    }
-
-    const videoId = latestVideo.id.videoId;
+    const videoId = videoIdMatch[1];
 
     if (!force && channel.lastVideoId === videoId) {
       console.log(`ℹ️ No new videos for channel '${channel.name}'.`);
